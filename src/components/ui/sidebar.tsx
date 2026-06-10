@@ -1,11 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { cn } from '@/lib/utils/cn';
-import { Button } from './button';
-import { useEffect, useState } from 'react';
 
 interface NavItem {
   name: string;
@@ -22,25 +20,14 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { profile, tenant, logout, loading } = useAuth();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
+  const { profile, tenant, loading } = useAuth();
 
   // Hide sidebar on login/auth pages
   if (pathname?.includes('/login') || pathname?.includes('/auth') || pathname?.includes('/onboarding')) {
     return null;
   }
 
-  if (!isClient || loading) {
+  if (loading) {
     return (
       <aside className="flex flex-col w-64 h-screen bg-gray-900 text-white p-4">
         <div className="mb-8 text-2xl font-bold text-blue-400">StockPilot</div>
@@ -84,13 +71,6 @@ export function Sidebar() {
             <p className="text-sm font-medium truncate">{profile.full_name}</p>
             <p className="text-xs text-gray-500 truncate">{profile.email}</p>
           </div>
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={handleLogout}
-          >
-            Cerrar sesión
-          </Button>
         </div>
       )}
     </aside>
