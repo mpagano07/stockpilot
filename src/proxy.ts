@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export async function middleware(request: NextRequest) {
-  const supabaseClient = supabase();
+export async function proxy(request: NextRequest) {
+  const supabaseClient = supabase;
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) {
     const redirectUrl = new URL('/login', request.url);
