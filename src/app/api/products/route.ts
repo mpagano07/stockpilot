@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase';
 import type { Product } from '@/lib/types/product';
 
 /** Helper to extract tenant id from request headers */
@@ -13,8 +13,10 @@ export async function GET(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
   }
-  const { data, error } = await supabase
-    .from<Product>('products')
+
+  const supabaseClient = await createServerSupabaseClient();
+  const { data, error } = await supabaseClient
+    .from('products')
     .select('*')
     .eq('tenant_id', tenantId);
   if (error) {
@@ -33,7 +35,9 @@ export async function POST(request: Request) {
     ...body,
     tenant_id: tenantId,
   };
-  const { data, error } = await supabase.from<Product>('products').insert(product).select();
+
+  const supabaseClient = await createServerSupabaseClient();
+  const { data, error } = await supabaseClient.from('products').insert(product).select();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
