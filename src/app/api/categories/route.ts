@@ -45,6 +45,8 @@ export async function POST(request: Request) {
       .insert({
         name: body.name,
         description: body.description || null,
+        icon: body.icon || null,
+        color: body.color || null,
         tenant_id: tenantId,
       })
       .select()

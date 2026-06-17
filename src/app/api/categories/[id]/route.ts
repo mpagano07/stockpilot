@@ -31,6 +31,8 @@ export async function PATCH(
       .update({
         name: body.name,
         description: body.description,
+        icon: body.icon,
+        color: body.color,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

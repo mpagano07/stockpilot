@@ -26,12 +26,12 @@ export async function GET(request: Request) {
     .eq('id', user.id)
     .maybeSingle();
 
-  const { data: tenantUser } = await supabaseAdmin
+  const { data: tenantUsers } = await supabaseAdmin
     .from('tenant_users')
     .select('tenant_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
+    .eq('user_id', user.id);
 
+  const tenantUser = tenantUsers?.[0];
   let tenant = null;
   if (tenantUser?.tenant_id) {
     const { data: tenantData } = await supabaseAdmin

@@ -28,9 +28,10 @@ export async function PATCH(
     const body = await request.json();
     const allowedFields = [
       'category_id', 'sku', 'barcode', 'name', 'description',
-      'price', 'cost', 'stock', 'min_stock', 'max_stock', 'image_url', 'metadata',
+      'cost', 'stock', 'min_stock', 'max_stock', 'image_url', 'metadata',
     ];
     const updateData: Record<string, any> = {};
+    if (body.price !== undefined) updateData.price_cents = Math.round(body.price * 100);
     for (const key of allowedFields) {
       if (body[key] !== undefined) updateData[key] = body[key];
     }
@@ -48,7 +49,7 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, price: (data as any).price_cents != null ? (data as any).price_cents / 100 : 0 });
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }

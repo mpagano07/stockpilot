@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Check if user already has a tenant
-  const { data: tenantUser } = await supabaseAdmin
+  const { data: tenantUsers } = await supabaseAdmin
     .from('tenant_users')
     .select('tenant_id')
-    .eq('user_id', data.user.id)
-    .maybeSingle();
+    .eq('user_id', data.user.id);
 
+  const tenantUser = tenantUsers?.[0];
   if (tenantUser?.tenant_id) {
     // Existing user with tenant → go to dashboard
     response.headers.set('location', `${origin}/`);
