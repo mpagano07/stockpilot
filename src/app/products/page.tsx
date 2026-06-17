@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useProducts } from '@/lib/hooks/useProducts';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -144,11 +145,14 @@ export default function ProductsPage() {
     const method = editingProduct ? 'PATCH' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sep = url.includes('?') ? '&' : '?';
+      const res = await fetch(tenantId ? `${url}${sep}tenantId=${tenantId}` : url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify(productForm),
       });
@@ -170,9 +174,13 @@ export default function ProductsPage() {
     if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
 
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(tenantId ? `/api/products/${id}?tenantId=${tenantId}` : `/api/products/${id}`, {
         method: 'DELETE',
-        headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+        headers: {
+          ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar');
@@ -193,11 +201,13 @@ export default function ProductsPage() {
 
     setIsSubmittingCategory(true);
     try {
-      const res = await fetch('/api/categories', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(tenantId ? `/api/categories?tenantId=${tenantId}` : `/api/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify(categoryForm),
       });
@@ -219,9 +229,13 @@ export default function ProductsPage() {
     if (!confirm('¿Deseas eliminar esta categoría? Los productos asociados se quedarán sin categoría.')) return;
 
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(tenantId ? `/api/categories/${id}?tenantId=${tenantId}` : `/api/categories/${id}`, {
         method: 'DELETE',
-        headers: tenantId ? { 'x-tenant-id': tenantId } : {},
+        headers: {
+          ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar');

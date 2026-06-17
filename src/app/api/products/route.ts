@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import type { Product } from '@/lib/types/product';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-/** Helper to extract tenant id from request headers */
-function getTenantId(request: Request): string | null {
-  const tenant = request.headers.get('x-tenant-id');
-  return tenant;
+async function getAuthenticatedTenant(): Promise<string | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: tu } = await supabaseAdmin
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id);
+
+  if (!tu || tu.length === 0) return null;
+  return (tu as any)[0].tenant_id;
 }
 
-export async function GET(request: Request) {
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
+export async function GET() {
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const supabaseClient = await createServerSupabaseClient();
-  const { data, error } = await supabaseClient
+  const { data, error } = await supabaseAdmin
     .from('products')
     .select('*')
     .eq('tenant_id', tenantId);
@@ -26,18 +31,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
-  const body = await request.json();
-  const product: Partial<Product> = {
-    ...body,
-    tenant_id: tenantId,
-  };
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const supabaseClient = await createServerSupabaseClient();
-  const { data, error } = await supabaseClient.from('products').insert(product).select();
+  const body = await request.json();
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .insert({ ...body, tenant_id: tenantId })
+    .select();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-function getTenantId(request: Request): string | null {
-  return request.headers.get('x-tenant-id');
+async function getAuthenticatedTenant(): Promise<string | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: tu } = await supabaseAdmin
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id);
+
+  if (!tu || tu.length === 0) return null;
+  return (tu as any)[0].tenant_id;
 }
 
 export async function PATCH(
@@ -10,22 +21,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   try {
     const body = await request.json();
-    const supabaseClient = await createServerSupabaseClient();
-
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabaseAdmin
       .from('categories')
       .update({
         name: body.name,
         description: body.description,
-        icon: body.icon,
-        color: body.color,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -48,13 +53,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const supabaseClient = await createServerSupabaseClient();
-  const { error } = await supabaseClient
+  const { error } = await supabaseAdmin
     .from('categories')
     .delete()
     .eq('id', id)

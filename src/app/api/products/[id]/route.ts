@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-function getTenantId(request: Request): string | null {
-  return request.headers.get('x-tenant-id');
+async function getAuthenticatedTenant(): Promise<string | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: tu } = await supabaseAdmin
+    .from('tenant_users')
+    .select('tenant_id')
+    .eq('user_id', user.id);
+
+  if (!tu || tu.length === 0) return null;
+  return (tu as any)[0].tenant_id;
 }
 
 export async function PATCH(
@@ -10,41 +21,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   try {
     const body = await request.json();
-    
-    // Pick fields to update to avoid setting restricted columns (like tenant_id)
-    const updateData: Record<string, any> = {};
     const allowedFields = [
-      'category_id',
-      'sku',
-      'barcode',
-      'name',
-      'description',
-      'price',
-      'cost',
-      'stock',
-      'min_stock',
-      'max_stock',
-      'image_url',
-      'metadata',
+      'category_id', 'sku', 'barcode', 'name', 'description',
+      'price', 'cost', 'stock', 'min_stock', 'max_stock', 'image_url', 'metadata',
     ];
-
+    const updateData: Record<string, any> = {};
     for (const key of allowedFields) {
-      if (body[key] !== undefined) {
-        updateData[key] = body[key];
-      }
+      if (body[key] !== undefined) updateData[key] = body[key];
     }
-
     updateData.updated_at = new Date().toISOString();
 
-    const supabaseClient = await createServerSupabaseClient();
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
       .eq('id', id)
@@ -57,7 +49,7 @@ export async function PATCH(
     }
 
     return NextResponse.json(data);
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 }
@@ -67,13 +59,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = getTenantId(request);
-  if (!tenantId) {
-    return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
-  }
+  const tenantId = await getAuthenticatedTenant();
+  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const supabaseClient = await createServerSupabaseClient();
-  const { error } = await supabaseClient
+  const { error } = await supabaseAdmin
     .from('products')
     .delete()
     .eq('id', id)
