@@ -9,8 +9,17 @@ import { useProducts } from '@/lib/hooks/useProducts';
 import { supabase } from '@/lib/supabaseClient';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, AlertOctagon, TrendingUp, Users, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Package, AlertOctagon, TrendingUp, Users, ArrowRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,6 +27,8 @@ export default function DashboardPage() {
   const { products, isLoading: productsLoading } = useProducts(tenant?.id);
   const [salesData, setSalesData] = useState<{ todayTotal: number; saleCount: number } | null>(null);
   const [salesLoading, setSalesLoading] = useState(true);
+  const [salesChartData, setSalesChartData] = useState<{ date: string; day: string; total: number }[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     if (!tenant?.id) return;
@@ -27,21 +38,30 @@ export default function DashboardPage() {
         const { data: { session } } = await supabase.auth.getSession();
         const headers: Record<string, string> = {};
         if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-        const res = await fetch('/api/sales', { headers });
-        if (!res.ok) return;
-        const sales: Record<string, unknown>[] = await res.json();
 
-        const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+        const [salesRes, summaryRes] = await Promise.all([
+          fetch('/api/sales', { headers }),
+          fetch('/api/sales/summary', { headers }),
+        ]);
 
-        const todaySales = sales.filter(s => (s.created_at as string) >= todayStart);
-        const todayTotal = todaySales.reduce((sum, s) => sum + ((s.total_cents as number) || 0), 0);
+        if (salesRes.ok) {
+          const sales: Record<string, unknown>[] = await salesRes.json();
+          const today = new Date();
+          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+          const todaySales = sales.filter(s => (s.created_at as string) >= todayStart);
+          const todayTotal = todaySales.reduce((sum, s) => sum + ((s.total_cents as number) || 0), 0);
+          setSalesData({ todayTotal, saleCount: todaySales.length });
+        }
 
-        setSalesData({ todayTotal, saleCount: todaySales.length });
+        if (summaryRes.ok) {
+          const summary = await summaryRes.json();
+          setSalesChartData(summary);
+        }
       } catch (err) {
         console.error('Error fetching sales:', err);
       } finally {
         setSalesLoading(false);
+        setChartLoading(false);
       }
     })();
   }, [tenant?.id]);
@@ -62,6 +82,7 @@ export default function DashboardPage() {
             <Card key={i} className="h-28 bg-gray-100 dark:bg-gray-800 animate-pulse" />
           ))}
         </div>
+        <Card className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse" />
         <Card className="h-48 bg-gray-100 dark:bg-gray-800 animate-pulse" />
       </div>
     );
@@ -143,6 +164,49 @@ export default function DashboardPage() {
           </div>
         </Card>
       </div>
+
+      {/* Sales Chart */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-indigo-500" />
+            Ventas de los últimos 7 días
+          </h2>
+        </div>
+        {chartLoading ? (
+          <div className="h-52 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" />
+        ) : salesChartData.length === 0 || salesChartData.every(d => d.total === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50/50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
+            <BarChart3 className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Sin ventas aún</p>
+            <p className="text-xs text-gray-500 mt-0.5">Las ventas registradas aparecerán aquí.</p>
+          </div>
+        ) : (
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={salesChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                <Tooltip
+                  formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Total']}
+                  labelFormatter={(label, payload) => {
+                    const item = (payload as any[])?.[0]?.payload;
+                    return item?.date || label;
+                  }}
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="total" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
 
       {/* Main Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

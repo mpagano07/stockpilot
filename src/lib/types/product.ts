@@ -6,6 +6,7 @@ export interface Product {
   barcode?: string;
   name: string;
   description?: string;
+  image_url?: string;
   images?: string[];
   unit?: string;
   cost?: number;

@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/' },
   { name: 'Ventas', href: '/sales' },
   { name: 'Productos', href: '/products' },
+  { name: 'Proveedores', href: '/providers' },
   { name: 'Escáner', href: '/scanning' },
   { name: 'Configuración', href: '/settings' },
 ];

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import type { Product } from '@/lib/types/product';
 import type { Category } from '@/lib/types/category';
 import toast from 'react-hot-toast';
@@ -23,7 +24,9 @@ import {
   X,
   Check,
   Loader2,
-  FolderKanban
+  FolderKanban,
+  ImageIcon,
+  Upload
 } from 'lucide-react';
 
 export default function ProductsPage() {
@@ -51,7 +54,11 @@ export default function ProductsPage() {
     min_stock: 0,
     max_stock: 0,
     description: '',
+    image_url: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -62,6 +69,10 @@ export default function ProductsPage() {
   });
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'delete-product' | 'delete-category';
+    id: string;
+  } | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,7 +125,9 @@ export default function ProductsPage() {
         min_stock: product.min_stock ?? 0,
         max_stock: product.max_stock ?? 0,
         description: product.description || '',
+        image_url: product.image_url || '',
       });
+      setImagePreview(product.image_url || null);
     } else {
       setEditingProduct(null);
       setProductForm({
@@ -128,8 +141,11 @@ export default function ProductsPage() {
         min_stock: 5,
         max_stock: 100,
         description: '',
+        image_url: '',
       });
+      setImagePreview(null);
     }
+    setImageFile(null);
     setIsProductModalOpen(true);
   };
 
@@ -141,11 +157,29 @@ export default function ProductsPage() {
     }
 
     setIsSubmittingProduct(true);
-    const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
-    const method = editingProduct ? 'PATCH' : 'POST';
 
     try {
+      let imageUrl = productForm.image_url;
+
+      if (imageFile) {
+        setIsUploadingImage(true);
+        const formData = new FormData();
+        formData.append('file', imageFile);
+        const { data: { session } } = await supabase.auth.getSession();
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {},
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Error al subir la imagen');
+        imageUrl = uploadData.url;
+        setIsUploadingImage(false);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
+      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+      const method = editingProduct ? 'PATCH' : 'POST';
       const sep = url.includes('?') ? '&' : '?';
       const res = await fetch(tenantId ? `${url}${sep}tenantId=${tenantId}` : url, {
         method,
@@ -154,7 +188,7 @@ export default function ProductsPage() {
           ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify(productForm),
+        body: JSON.stringify({ ...productForm, image_url: imageUrl }),
       });
 
       const data = await res.json();
@@ -167,29 +201,12 @@ export default function ProductsPage() {
       toast.error(err.message);
     } finally {
       setIsSubmittingProduct(false);
+      setIsUploadingImage(false);
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(tenantId ? `/api/products/${id}?tenantId=${tenantId}` : `/api/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al eliminar');
-
-      toast.success('Producto eliminado');
-      mutateProducts();
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+    setConfirmAction({ type: 'delete-product', id });
   };
 
   const handleCreateCategory = async (e: React.FormEvent) => {
@@ -226,22 +243,33 @@ export default function ProductsPage() {
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('¿Deseas eliminar esta categoría? Los productos asociados se quedarán sin categoría.')) return;
+    setConfirmAction({ type: 'delete-category', id });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, id } = confirmAction;
+    setConfirmAction(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(tenantId ? `/api/categories/${id}?tenantId=${tenantId}` : `/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: {
-          ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
-          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al eliminar');
+      const headers: Record<string, any> = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
 
-      toast.success('Categoría eliminada');
-      mutateCategories();
+      if (type === 'delete-product') {
+        const res = await fetch(tenantId ? `/api/products/${id}?tenantId=${tenantId}` : `/api/products/${id}`, { method: 'DELETE', headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al eliminar');
+        toast.success('Producto eliminado');
+        mutateProducts();
+      } else if (type === 'delete-category') {
+        const res = await fetch(tenantId ? `/api/categories/${id}?tenantId=${tenantId}` : `/api/categories/${id}`, { method: 'DELETE', headers });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al eliminar');
+        toast.success('Categoría eliminada');
+        mutateCategories();
+      }
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -350,10 +378,24 @@ export default function ProductsPage() {
                   return (
                     <tr key={product.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
                       <td className="py-4 px-6">
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</div>
-                        {product.description && (
-                          <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">{product.description}</div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {product.image_url && (
+                            <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800">
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-gray-100">{product.name}</div>
+                            {product.description && (
+                              <div className="text-xs text-gray-500 line-clamp-1 mt-0.5">{product.description}</div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="py-4 px-6">
                         {category ? (
@@ -490,6 +532,64 @@ export default function ProductsPage() {
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                   />
+                </div>
+
+                {/* Image Upload */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                    Imagen del Producto
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 cursor-pointer hover:border-indigo-400 transition-colors"
+                      onClick={() => document.getElementById('product-image-input')?.click()}
+                    >
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        id="product-image-input"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setImageFile(file);
+                            setImagePreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('product-image-input')?.click()}
+                      >
+                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                        {imagePreview ? 'Cambiar imagen' : 'Subir imagen'}
+                      </Button>
+                      <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WebP o GIF. Máx 5MB.</p>
+                    </div>
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          setProductForm({ ...productForm, image_url: '' });
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-500 rounded"
+                        title="Eliminar imagen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -729,6 +829,26 @@ export default function ProductsPage() {
           </Card>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmAction}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        title={
+          confirmAction?.type === 'delete-product' ? 'Eliminar producto' :
+          'Eliminar categoría'
+        }
+        message={
+          confirmAction?.type === 'delete-product'
+            ? '¿Estás seguro de que deseas eliminar este producto?'
+            : '¿Deseas eliminar esta categoría? Los productos asociados se quedarán sin categoría.'
+        }
+        variant="danger"
+        confirmLabel={
+          confirmAction?.type === 'delete-product' ? 'Eliminar producto' :
+          'Eliminar categoría'
+        }
+      />
     </div>
   );
 }

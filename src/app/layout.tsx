@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   generator: 'Next.js',
   applicationName: 'StockPilot',
   referrer: 'origin-when-cross-origin',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon-512.svg',
+    apple: '/icons/icon-512.svg',
+  },
 };
 
 export const viewport: Viewport = {
