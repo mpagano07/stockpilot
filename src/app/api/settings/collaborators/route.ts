@@ -212,10 +212,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: inviteError.message }, { status: 500 });
     }
 
+    const origin = new URL(request.url).origin;
+    const { error: inviteEmailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email.toLowerCase(),
+      { redirectTo: `${origin}/accept-invite` }
+    );
+
+    if (inviteEmailError) {
+      console.error('Error sending invite email:', inviteEmailError);
+    }
+
     return NextResponse.json({
       invited: true,
       email: email.toLowerCase(),
-      message: 'Invitación enviada. El usuario recibirá acceso al registrarse.',
+      message: 'Invitación enviada por email.',
     }, { status: 201 });
   } catch (err) {
     console.error('Error adding collaborator:', err);

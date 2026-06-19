@@ -2,10 +2,46 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-export async function POST() {
+async function getAuthenticatedUser(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  const refreshToken = request.headers.get('x-refresh-token');
+
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '');
+    const authClient = await createServerSupabaseClient();
+
+    const { data: sessionData, error: sessionError } = await authClient.auth.setSession({
+      access_token: token,
+      refresh_token: refreshToken ?? '',
+    });
+    if (!sessionData?.session || sessionError) {
+      return null;
+    }
+
+    const { data: userData, error: userError } = await authClient.auth.getUser();
+    if (userError || !userData.user) {
+      return null;
+    }
+
+    return userData.user;
+  }
+
+  const authClient = await createServerSupabaseClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await authClient.auth.getUser();
+
+  if (userError || !user) {
+    return null;
+  }
+
+  return user;
+}
+
+export async function POST(request: Request) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser(request);
     if (!user || !user.email) {
       return NextResponse.json({ accepted: 0 });
     }
