@@ -20,8 +20,11 @@ const navItems: NavItem[] = [
   { name: 'Clientes', href: '/customers' },
   { name: 'Asistente IA', href: '/ai' },
   { name: 'Pronóstico', href: '/forecast' },
+  { name: 'Antipérdidas', href: '/loss-prevention' },
+  { name: 'Visión Góndolas', href: '/shelf-vision' },
   { name: 'Escáner', href: '/scanning' },
   { name: 'Notificaciones', href: '/notifications' },
+  { name: 'Facturación', href: '/billing' },
   { name: 'Configuración', href: '/settings' },
 ];
 
