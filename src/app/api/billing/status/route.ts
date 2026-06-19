@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import { PLANS } from '@/lib/stripe';
+import { PLANS } from '@/lib/plans';
 
 export async function GET() {
   const supabase = await createServerSupabaseClient();
@@ -20,13 +20,13 @@ export async function GET() {
     .eq('id', tu[0].tenant_id)
     .single();
 
-  const plan = (tenant?.subscription_plan as keyof typeof PLANS) || 'free';
-  const planConfig = PLANS[plan] || PLANS.free;
+  const plan = (tenant?.subscription_plan as keyof typeof PLANS) || 'starter';
+  const planConfig = PLANS[plan] || PLANS.starter;
 
   return NextResponse.json({
     plan: plan,
     planName: planConfig.name,
-    status: tenant?.subscription_status || 'free',
+    status: tenant?.subscription_status || 'inactive',
     currentPeriodEnd: tenant?.subscription_current_period_end,
     features: planConfig.features,
   });

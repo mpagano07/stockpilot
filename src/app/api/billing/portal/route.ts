@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import { stripe } from '@/lib/stripe';
+import { cancelPreApproval } from '@/lib/mercadopago';
 
-export async function POST(request: Request) {
+export async function POST() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -16,18 +16,24 @@ export async function POST(request: Request) {
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('stripe_customer_id')
+    .select('mercadopago_preapproval_id')
     .eq('id', tu[0].tenant_id)
     .single();
 
-  if (!tenant?.stripe_customer_id) {
+  if (!tenant?.mercadopago_preapproval_id) {
     return NextResponse.json({ error: 'Sin suscripción activa' }, { status: 400 });
   }
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: tenant.stripe_customer_id,
-    return_url: `${request.headers.get('origin')}/billing`,
-  });
+  await cancelPreApproval(tenant.mercadopago_preapproval_id);
 
-  return NextResponse.json({ url: session.url });
+  await supabaseAdmin
+    .from('tenants')
+    .update({
+      subscription_status: 'canceled',
+      subscription_plan: 'free',
+      mercadopago_preapproval_id: null,
+    })
+    .eq('id', tu[0].tenant_id);
+
+  return NextResponse.json({ success: true });
 }

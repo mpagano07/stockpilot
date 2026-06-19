@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import { stripe, PLANS } from '@/lib/stripe';
+import { PLANS } from '@/lib/plans';
+import { createPreApproval } from '@/lib/mercadopago';
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -18,37 +19,37 @@ export async function POST(request: Request) {
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('stripe_customer_id, name, billing_email')
+    .select('name, billing_email')
     .eq('id', tenantId)
     .single();
 
   const { plan } = await request.json();
   const planConfig = PLANS[plan as keyof typeof PLANS];
 
-  if (!planConfig || !planConfig.priceId) {
+  if (!planConfig) {
     return NextResponse.json({ error: 'Plan inválido o no disponible' }, { status: 400 });
   }
 
-  let customerId = tenant?.stripe_customer_id;
+  const origin = request.headers.get('origin') || '';
 
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: tenant?.billing_email || user.email,
-      name: tenant?.name || 'Empresa',
-      metadata: { tenant_id: tenantId },
-    });
-    customerId = customer.id;
-    await supabaseAdmin.from('tenants').update({ stripe_customer_id: customerId }).eq('id', tenantId);
-  }
-
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'subscription',
-    line_items: [{ price: planConfig.priceId, quantity: 1 }],
-    success_url: `${request.headers.get('origin')}/billing?success=true`,
-    cancel_url: `${request.headers.get('origin')}/billing?canceled=true`,
-    metadata: { tenant_id: tenantId },
+  const preapproval = await createPreApproval({
+    payer_email: tenant?.billing_email || user.email!,
+    reason: `Suscripción ${planConfig.name} - StockPilot`,
+    back_url: `${origin}/billing?success=true`,
+    external_reference: tenantId,
+    auto_recurring: {
+      frequency: 1,
+      frequency_type: 'months',
+      transaction_amount: planConfig.price,
+      currency_id: 'ARS',
+      trial_period_days: 30,
+    } as any,
   });
 
-  return NextResponse.json({ url: session.url });
+  await supabaseAdmin
+    .from('tenants')
+    .update({ mercadopago_preapproval_id: preapproval.id })
+    .eq('id', tenantId);
+
+  return NextResponse.json({ url: preapproval.init_point });
 }

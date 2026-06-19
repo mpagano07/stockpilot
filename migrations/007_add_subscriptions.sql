@@ -1,4 +1,4 @@
--- Add subscription fields to tenants table for Stripe billing
+-- Add subscription fields to tenants table
 
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'active', 'past_due', 'canceled', 'incomplete'));

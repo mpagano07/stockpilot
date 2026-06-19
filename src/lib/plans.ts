@@ -1,9 +1,8 @@
 export const PLANS = {
-  free: {
-    id: 'free',
-    name: 'Gratuito',
-    price: 0,
-    priceId: null,
+  starter: {
+    id: 'starter',
+    name: 'Starter',
+    price: 20000,
     features: [
       'Hasta 50 productos',
       'Hasta 3 usuarios',
@@ -11,24 +10,10 @@ export const PLANS = {
       'Dashboard básico',
     ],
   },
-  starter: {
-    id: 'starter',
-    name: 'Starter',
-    price: 1500,
-    priceId: null,
-    features: [
-      'Hasta 500 productos',
-      'Hasta 10 usuarios',
-      'Asistente IA',
-      'Pronóstico de demanda',
-      'Antipérdidas',
-    ],
-  },
   business: {
     id: 'business',
     name: 'Business',
-    price: 4900,
-    priceId: null,
+    price: 50000,
     features: [
       'Productos ilimitados',
       'Usuarios ilimitados',
@@ -41,8 +26,7 @@ export const PLANS = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 0,
-    priceId: null,
+    price: 90000,
     features: [
       'Todo lo de Business',
       'On-premise option',

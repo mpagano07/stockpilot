@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PLANS } from '@/lib/plans';
-import { CreditCard, CheckCircle2, Loader2, ExternalLink, Zap, ArrowRight } from 'lucide-react';
+import { CreditCard, CheckCircle2, Loader2, Zap, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function BillingPage() {
@@ -33,11 +33,6 @@ export default function BillingPage() {
   }, []);
 
   const handleSubscribe = async (planId: string) => {
-    if (planId === 'enterprise') {
-      window.open('mailto:sales@stockpilot.app', '_blank');
-      return;
-    }
-
     setCheckoutLoading(planId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -58,7 +53,9 @@ export default function BillingPage() {
     }
   };
 
-  const handlePortal = async () => {
+  const handleCancel = async () => {
+    if (!confirm('¿Estás seguro de cancelar la suscripción? Perderás acceso a las funciones premium.')) return;
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -67,7 +64,8 @@ export default function BillingPage() {
       const res = await fetch('/api/billing/portal', { method: 'POST', headers });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || 'Error'); return; }
-      if (data.url) window.location.href = data.url;
+      toast.success('Suscripción cancelada');
+      setSubscription(null);
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -82,7 +80,7 @@ export default function BillingPage() {
     );
   }
 
-  const currentPlanId = subscription?.plan || 'free';
+  const currentPlanId = subscription?.plan || 'starter';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -111,7 +109,7 @@ export default function BillingPage() {
                 }`}>
                   {subscription.status === 'active' ? 'Activo' :
                    subscription.status === 'past_due' ? 'Vencido' :
-                   subscription.status === 'free' ? 'Gratuito' : subscription.status}
+                   subscription.status === 'inactive' ? 'Sin plan' : subscription.status}
                 </span>
                 {subscription.currentPeriodEnd && (
                   <span className="text-xs text-gray-500">
@@ -120,9 +118,9 @@ export default function BillingPage() {
                 )}
               </div>
             </div>
-            {subscription.status !== 'free' && (
-              <Button variant="outline" onClick={handlePortal} className="flex items-center gap-2">
-                <ExternalLink className="h-4 w-4" /> Gestionar en Stripe
+            {subscription.status === 'active' && (
+              <Button variant="outline" onClick={handleCancel} className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                Cancelar suscripción
               </Button>
             )}
           </div>
@@ -137,9 +135,9 @@ export default function BillingPage() {
 
           return (
             <Card key={id} className={`p-6 relative flex flex-col ${isCurrent ? 'ring-2 ring-indigo-500' : ''} ${isPopular && !isCurrent ? 'border-indigo-200 dark:border-indigo-800' : ''}`}>
-              {isPopular && !isCurrent && (
+              {id === 'starter' && !isCurrent && (
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold bg-indigo-600 text-white px-3 py-0.5 rounded-full">
-                  Popular
+                  30 días gratis
                 </span>
               )}
               {isCurrent && (
@@ -152,11 +150,11 @@ export default function BillingPage() {
               <div className="mt-2 mb-4">
                 {plan.price > 0 ? (
                   <>
-                    <span className="text-3xl font-extrabold text-gray-900 dark:text-white">${(plan.price / 100).toFixed(2)}</span>
+                    <span className="text-3xl font-extrabold text-gray-900 dark:text-white">${plan.price.toLocaleString('es-AR')}</span>
                     <span className="text-sm text-gray-500">/mes</span>
                   </>
                 ) : (
-                  <span className="text-xl font-semibold text-gray-500">{id === 'enterprise' ? 'A medida' : 'Gratuito'}</span>
+                  <span className="text-xl font-semibold text-gray-500">{id === 'enterprise' ? 'A medida' : ''}</span>
                 )}
               </div>
 
@@ -178,17 +176,15 @@ export default function BillingPage() {
                 >
                   {checkoutLoading === id ? (
                     <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Procesando...</>
-                  ) : id === 'enterprise' ? (
-                    <><Zap className="h-4 w-4 mr-2" /> Contactar <ArrowRight className="h-4 w-4 ml-1" /></>
                   ) : (
-                    <>{plan.price === 0 ? 'Comenzar' : 'Suscribirse'} <ArrowRight className="h-4 w-4 ml-1" /></>
+                    <>Suscribirse <ArrowRight className="h-4 w-4 ml-1" /></>
                   )}
                 </Button>
               )}
 
-              {isCurrent && currentPlanId !== 'free' && (
-                <Button variant="outline" onClick={handlePortal} className="w-full">
-                  Cambiar plan
+              {isCurrent && subscription?.status === 'active' && (
+                <Button variant="outline" onClick={handleCancel} className="w-full text-red-600 border-red-200 hover:bg-red-50">
+                  Cancelar suscripción
                 </Button>
               )}
             </Card>
@@ -197,11 +193,12 @@ export default function BillingPage() {
       </div>
 
       {/* Environment notice */}
-      {(!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === 'YOUR_STRIPE_PUBLISHABLE_KEY') && (
+      {(!process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ||
+        process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY === 'YOUR_MERCADOPAGO_PUBLIC_KEY') && (
         <Card className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/30">
           <p className="text-sm text-amber-700 dark:text-amber-400">
-            ⚡ Stripe no está configurado. Para activar pagos, configurá las keys de Stripe en <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env.local</code> y los price IDs en <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">STRIPE_PRICE_STARTER</code> y <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">STRIPE_PRICE_BUSINESS</code>.
+            Mercado Pago no está configurado. Para activar pagos, configurá las credenciales en{' '}
+            <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env.local</code>.
           </p>
         </Card>
       )}
