@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   try {
     const authRoutes = ['/login', '/auth/callback', '/auth/signup', '/auth/forgot-password', '/auth/reset-password'];
     const isOnboardingRoute = request.nextUrl.pathname === '/onboarding';
@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Middleware: error fetching tenant for user', user.id, error);
+        console.error('Proxy: error fetching tenant for user', user.id, error);
       }
 
       const tenantId = tu?.[0]?.tenant_id;
@@ -110,7 +110,7 @@ export async function middleware(request: NextRequest) {
       NextResponse.next({ request: { headers: request.headers } })
     );
   } catch (error) {
-    console.error('Middleware error:', error);
+    console.error('Proxy error:', error);
     return NextResponse.next({ request: { headers: request.headers } });
   }
 }
