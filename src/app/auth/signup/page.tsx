@@ -40,7 +40,12 @@ export default function SignupPage() {
       if (error) throw error;
 
       if (data?.user?.identities?.length === 0) {
-        toast.error('Este email ya está registrado');
+        toast.error(
+          'Este email ya está registrado. Usa "Olvidé mi contraseña" para acceder.'
+        );
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
         return;
       }
 

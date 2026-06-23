@@ -1,18 +1,39 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [ready, setReady] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const code = searchParams?.get('code');
+    if (!code) {
+      toast.error('Link inválido');
+      router.push('/login');
+      return;
+    }
+
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) {
+        toast.error(error.message);
+        router.push('/login');
+        return;
+      }
+      setReady(true);
+    });
+  }, [searchParams, router]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +51,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password,
-      });
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) throw error;
 
@@ -45,6 +64,17 @@ export default function ResetPasswordPage() {
       setLoading(false);
     }
   };
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mx-auto" />
+          <p className="mt-4 text-gray-600">Verificando link...</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -93,5 +123,21 @@ export default function ResetPasswordPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <Card className="w-full max-w-md p-8 text-center">
+            <div className="animate-pulse">Cargando...</div>
+          </Card>
+        </div>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

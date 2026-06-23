@@ -18,13 +18,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'full_name is required' }, { status: 400 });
     }
 
+    const { data: tenantUser } = await supabaseAdmin
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     const { data, error } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
         full_name: full_name.trim(),
+        email: user.email,
+        tenant_id: tenantUser?.tenant_id || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', user.id)
       .select()
       .single();
 

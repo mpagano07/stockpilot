@@ -23,6 +23,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProfileAndTenant = useCallback(async () => {
@@ -43,6 +44,7 @@ export function useAuth() {
 
       setProfile(data.profile);
       setTenant(data.tenant);
+      setRole(data.role);
     } catch (err) {
       console.error('Error loading profile/tenant:', err);
     }
@@ -63,6 +65,7 @@ export function useAuth() {
         setUser(null);
         setProfile(null);
         setTenant(null);
+        setRole(null);
       }
       setLoading(false);
     };
@@ -80,6 +83,7 @@ export function useAuth() {
           setUser(null);
           setProfile(null);
           setTenant(null);
+          setRole(null);
         }
 
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
@@ -99,12 +103,14 @@ export function useAuth() {
     setUser(null);
     setProfile(null);
     setTenant(null);
+    setRole(null);
   };
 
   return {
     user,
     profile,
     tenant,
+    role,
     loading,
     logout,
     isAuthenticated: !!user,

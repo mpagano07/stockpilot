@@ -1,19 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useSidebar } from '@/lib/contexts/sidebar-context';
 import { cn } from '@/lib/utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, LogOut } from 'lucide-react';
 
 interface NavItem {
   name: string;
   href: string;
   icon?: React.ReactNode;
   requiredPlan?: string[];
+  requiredRole?: string[];
 }
 
 const ALL_PLANS = ['starter', 'business', 'enterprise'];
@@ -31,16 +32,18 @@ const navItems: NavItem[] = [
   { name: 'Escáner', href: '/scanning', requiredPlan: ALL_PLANS },
   { name: 'Notificaciones', href: '/notifications', requiredPlan: ALL_PLANS },
   { name: 'Planes', href: '/billing', requiredPlan: ALL_PLANS },
-  { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS },
+  { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
 ];
 
-function SidebarNav({ onNavClick, tenantPlan }: { onNavClick?: () => void; tenantPlan?: string }) {
+function SidebarNav({ onNavClick, tenantPlan, userRole }: { onNavClick?: () => void; tenantPlan?: string; userRole?: string | null }) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
 
-  const visibleItems = navItems.filter(
-    (item) => !item.requiredPlan || item.requiredPlan.includes(tenantPlan || 'starter')
-  );
+  const visibleItems = navItems.filter((item) => {
+    if (item.requiredPlan && !item.requiredPlan.includes(tenantPlan || 'starter')) return false;
+    if (item.requiredRole && !item.requiredRole.includes(userRole || '')) return false;
+    return true;
+  });
 
   return (
     <>
@@ -70,7 +73,8 @@ function SidebarNav({ onNavClick, tenantPlan }: { onNavClick?: () => void; tenan
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { profile, tenant, loading } = useAuth();
+  const router = useRouter();
+  const { profile, tenant, role, user, loading, logout } = useAuth();
   const { isOpen, close } = useSidebar();
 
   if (pathname?.includes('/login') || pathname?.includes('/auth') || pathname?.includes('/onboarding')) {
@@ -90,13 +94,23 @@ export function Sidebar() {
     );
   }
 
-  const userSection = profile ? (
-    <div className="border-t border-gray-700 pt-4">
+  const userSection = (profile || user) ? (
+    <div className="border-t border-gray-700 pt-4 space-y-2">
       <div className="rounded-md bg-gray-800 p-3">
         <p className="text-xs text-gray-400">Usuario</p>
-        <p className="text-sm font-medium truncate">{profile.full_name}</p>
-        <p className="text-xs text-gray-500 truncate">{profile.email}</p>
+        <p className="text-sm font-medium truncate">{profile?.full_name || 'Sin nombre'}</p>
+        <p className="text-xs text-gray-500 truncate">{profile?.email || user?.email}</p>
       </div>
+      <button
+        onClick={async () => {
+          await logout();
+          router.push('/login');
+        }}
+        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
+      >
+        <LogOut className="h-4 w-4" />
+        Cerrar sesión
+      </button>
     </div>
   ) : null;
 
@@ -134,7 +148,7 @@ export function Sidebar() {
             </div>
             {tenant && <p className="text-xs text-gray-400 -mt-6 mb-4">{tenant.name}</p>}
             <nav className="flex-1 space-y-2 overflow-y-auto">
-              <SidebarNav onNavClick={close} tenantPlan={tenant?.subscription_plan} />
+              <SidebarNav onNavClick={close} tenantPlan={tenant?.subscription_plan} userRole={role} />
             </nav>
             {userSection}
           </motion.aside>
@@ -148,7 +162,7 @@ export function Sidebar() {
           {tenant && <p className="text-xs text-gray-400 mt-1">{tenant.name}</p>}
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto">
-          <SidebarNav tenantPlan={tenant?.subscription_plan} />
+          <SidebarNav tenantPlan={tenant?.subscription_plan} userRole={role} />
         </nav>
         {userSection}
       </aside>

@@ -12,7 +12,7 @@ import { useSidebar } from '@/lib/contexts/sidebar-context';
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, logout, loading } = useAuth();
+  const { profile, user, logout, loading } = useAuth();
   const { notifications, unreadCount, mutate } = useNotifications();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -158,17 +158,17 @@ export function Header() {
         </div>
 
         {/* User Menu */}
-        {profile ? (
+        {(profile || user) ? (
           <div className="relative">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="flex items-center space-x-2 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <div className="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {profile.full_name?.charAt(0).toUpperCase() || 'U'}
+                {(profile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
               </div>
               <span className="text-sm font-medium hidden sm:inline text-gray-700 dark:text-gray-300">
-                {profile.full_name}
+                {profile?.full_name || user?.email || 'Usuario'}
               </span>
             </button>
 
@@ -176,10 +176,10 @@ export function Header() {
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                 <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {profile.full_name}
+                    {profile?.full_name || 'Sin nombre'}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {profile.email}
+                    {profile?.email || user?.email}
                   </p>
                 </div>
                 <button

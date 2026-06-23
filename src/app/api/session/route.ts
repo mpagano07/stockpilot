@@ -29,12 +29,14 @@ export async function GET(request: Request) {
 
     const { data: tenantUsers } = await supabaseAdmin
       .from('tenant_users')
-      .select('tenant_id')
+      .select('tenant_id, role')
       .eq('user_id', user.id);
 
     const tenantUser = tenantUsers?.[0];
     let tenant = null;
+    let role = null;
     if (tenantUser?.tenant_id) {
+      role = tenantUser.role;
       const { data: tenantData } = await supabaseAdmin
         .from('tenants')
         .select('*')
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
       tenant = tenantData;
     }
 
-    return NextResponse.json({ user, profile, tenant });
+    return NextResponse.json({ user, profile, tenant, role });
   } catch (error) {
     console.error('Error in GET /api/session:', error);
     return NextResponse.json(

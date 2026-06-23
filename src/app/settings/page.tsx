@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,8 @@ import { Settings, User, Building2, Loader2, Save, KeyRound, Users, Mail, X, Shi
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
-  const { user, profile, tenant } = useAuth();
+  const { user, profile, tenant, role } = useAuth();
+  const router = useRouter();
 
   const [profileForm, setProfileForm] = useState({ full_name: '' });
   const [profileSynced, setProfileSynced] = useState(false);
@@ -38,6 +40,12 @@ export default function SettingsPage() {
   const currentUserId = user?.id;
   const currentUserCollab = collaborators.find((c: any) => c.user_id === currentUserId);
   const isOwner = currentUserCollab?.role === 'owner';
+
+  useEffect(() => {
+    if (role && role === 'member') {
+      router.replace('/');
+    }
+  }, [role, router]);
 
   useEffect(() => {
     async function fetchCollaborators() {
