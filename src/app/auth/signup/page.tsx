@@ -19,12 +19,17 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password !== confirmPassword) {
+    const target = e.target as HTMLFormElement;
+    const emailVal = (target.elements.namedItem('email') as HTMLInputElement)?.value || email;
+    const passwordVal = (target.elements.namedItem('password') as HTMLInputElement)?.value || password;
+    const confirmPasswordVal = (target.elements.namedItem('confirmPassword') as HTMLInputElement)?.value || confirmPassword;
+
+    if (passwordVal !== confirmPasswordVal) {
       toast.error('Las contraseñas no coinciden');
       return;
     }
 
-    if (password.length < 6) {
+    if (passwordVal.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
       return;
     }
@@ -33,8 +38,8 @@ export default function SignupPage() {
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: emailVal,
+        password: passwordVal,
       });
 
       if (error) throw error;
@@ -100,6 +105,7 @@ export default function SignupPage() {
             </label>
             <Input
               type="email"
+              name="email"
               placeholder="tu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -113,6 +119,7 @@ export default function SignupPage() {
             </label>
             <Input
               type="password"
+              name="password"
               placeholder="Mínimo 6 caracteres"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -127,6 +134,7 @@ export default function SignupPage() {
             </label>
             <Input
               type="password"
+              name="confirmPassword"
               placeholder="Repite la contraseña"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -137,7 +145,7 @@ export default function SignupPage() {
 
           <Button
             type="submit"
-            disabled={loading || !email || !password || !confirmPassword}
+            disabled={loading}
             className="w-full"
           >
             {loading ? 'Creando cuenta...' : 'Crear cuenta'}

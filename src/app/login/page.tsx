@@ -39,16 +39,20 @@ function LoginContent() {
     e.preventDefault();
     setLoading(true);
 
+    const target = e.target as HTMLFormElement;
+    const emailVal = (target.elements.namedItem('email') as HTMLInputElement)?.value || email;
+    const passwordVal = (target.elements.namedItem('password') as HTMLInputElement)?.value || password;
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: emailVal,
+        password: passwordVal,
       });
 
       if (error) throw error;
 
       if (remember) {
-        localStorage.setItem('stockpilot_remember', JSON.stringify({ email }));
+        localStorage.setItem('stockpilot_remember', JSON.stringify({ email: emailVal }));
       } else {
         localStorage.removeItem('stockpilot_remember');
       }
@@ -152,6 +156,7 @@ function LoginContent() {
               </label>
               <Input
                 type="email"
+                name="email"
                 placeholder="tu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -167,6 +172,7 @@ function LoginContent() {
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -204,7 +210,7 @@ function LoginContent() {
 
             <Button
               type="submit"
-              disabled={loading || !email || !password}
+              disabled={loading}
               className="w-full"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
