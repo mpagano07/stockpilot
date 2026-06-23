@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload, Loader2, ScanLine, CheckCircle2, AlertTriangle, X, Zap, ImageIcon } from 'lucide-react';
@@ -20,6 +22,8 @@ interface AnalysisResult {
 }
 
 export default function ShelfVisionPage() {
+  const router = useRouter();
+  const { tenant, loading: authLoading } = useAuth();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -32,6 +36,12 @@ export default function ShelfVisionPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && tenant && !['business', 'enterprise'].includes(tenant.subscription_plan || '')) {
+      router.push('/billing');
+    }
+  }, [authLoading, tenant, router]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

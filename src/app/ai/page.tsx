@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,6 +22,8 @@ const suggestions = [
 ];
 
 export default function AIChatPage() {
+  const router = useRouter();
+  const { tenant, loading: authLoading } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: '¡Hola! Soy tu asistente de inventario con IA. Podés preguntarme sobre tu stock, ventas, productos con bajo rendimiento y más. ¿En qué puedo ayudarte?' },
   ]);
@@ -29,8 +33,10 @@ export default function AIChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!authLoading && tenant && !['business', 'enterprise'].includes(tenant.subscription_plan || '')) {
+      router.push('/billing');
+    }
+  }, [authLoading, tenant, router]);
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || loading) return;

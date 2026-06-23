@@ -8,7 +8,7 @@ import { BarcodeScanner } from '@/components/scanner/BarcodeScanner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Package, Scan, ExternalLink, Plus, Loader2, CheckCircle2 } from 'lucide-react';
+import { Package, Scan, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ScannedProduct {
@@ -25,6 +25,13 @@ interface ScannedProduct {
 
 type ScanState = 'scanning' | 'found' | 'not_found' | 'creating' | 'created' | 'error';
 
+const STOCK_REASONS = [
+  { value: 'found', label: 'Inventario encontrado' },
+  { value: 'correction', label: 'Corrección de stock' },
+  { value: 'damaged', label: 'Producto dañado (restar)' },
+  { value: 'lost', label: 'Producto perdido (restar)' },
+] as const;
+
 export default function ScanningPage() {
   const router = useRouter();
   const { tenant } = useAuth();
@@ -33,15 +40,9 @@ export default function ScanningPage() {
   const [scanState, setScanState] = useState<ScanState>('scanning');
   const [scannedCode, setScannedCode] = useState('');
   const [product, setProduct] = useState<ScannedProduct | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    name: '',
-    price: 0,
-    cost: 0,
-    stock: 0,
-    min_stock: 5,
-    sku: '',
-  });
+  const [addQuantity, setAddQuantity] = useState(1);
+  const [addReason, setAddReason] = useState('found');
+  const [isAddingStock, setIsAddingStock] = useState(false);
 
   const handleScan = useCallback(async (code: string) => {
     setScannedCode(code);
@@ -53,61 +54,54 @@ export default function ScanningPage() {
 
       if (data.product) {
         setProduct(data.product);
+        setAddQuantity(1);
+        setAddReason('found');
         setScanState('found');
       } else {
-        setProduct(null);
         setScanState('not_found');
-        setForm((prev) => ({ ...prev, sku: code }));
+        router.push(`/products?create=1&barcode=${encodeURIComponent(code)}`);
       }
     } catch {
       setScanState('error');
       toast.error('Error al buscar producto');
     }
-  }, []);
+  }, [router]);
 
   const handleReset = useCallback(() => {
     setScanState('scanning');
     setScannedCode('');
     setProduct(null);
+    setAddQuantity(1);
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name) {
-      toast.error('El nombre del producto es requerido');
-      return;
-    }
+  const handleAddStock = async () => {
+    if (!product || addQuantity <= 0) return;
 
-    setIsSubmitting(true);
+    setIsAddingStock(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('/api/products', {
+      const quantity = addReason === 'damaged' || addReason === 'lost' ? -Math.abs(addQuantity) : addQuantity;
+
+      const res = await fetch(`/api/products/${product.id}/adjust`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({
-          ...form,
-          barcode: scannedCode,
-          price: Number(form.price),
-          cost: Number(form.cost),
-          stock: Number(form.stock),
-          min_stock: Number(form.min_stock),
-        }),
+        body: JSON.stringify({ quantity, reason: addReason }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al crear producto');
+      if (!res.ok) throw new Error(data.error || 'Error al ajustar stock');
 
-      setProduct(data);
+      setProduct((prev) => prev ? { ...prev, stock: data.newStock } : prev);
+      toast.success(`Stock actualizado: ${data.newStock} unidades`);
       setScanState('created');
-      toast.success('Producto creado');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al crear producto');
+      toast.error(err instanceof Error ? err.message : 'Error al ajustar stock');
     } finally {
-      setIsSubmitting(false);
+      setIsAddingStock(false);
     }
   };
 
@@ -160,162 +154,78 @@ export default function ScanningPage() {
               <div className="flex items-center gap-2 mb-4">
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Producto encontrado
+                  {product.name}
                 </h2>
               </div>
 
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Nombre</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{product.name}</p>
+                  <span className="text-gray-500">Stock actual</span>
+                  <p className="font-semibold text-lg">{product.stock ?? 0}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">SKU</p>
-                    <p className="text-sm font-mono">{product.sku || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Código</p>
-                    <p className="text-sm font-mono">{product.barcode || '—'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Precio</p>
-                    <p className="text-sm font-semibold text-green-600">${product.price}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Stock</p>
-                    <p className="text-sm font-semibold">{(product.stock ?? 0)}</p>
-                  </div>
+                <div>
+                  <span className="text-gray-500">Precio</span>
+                  <p className="font-semibold text-lg text-green-600">${product.price}</p>
                 </div>
               </div>
 
-              <div className="mt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/products`)}
-                  className="flex items-center gap-1"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Ir a Productos
-                </Button>
-                <Button onClick={handleReset}>
-                  <Scan className="h-4 w-4 mr-1" />
-                  Escanear otro
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {scanState === 'not_found' && (
-            <Card className="p-6">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Producto no encontrado
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  No hay un producto registrado con el código <strong>{scannedCode}</strong>.
-                </p>
-              </div>
-
-              <form onSubmit={handleCreate} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                    Nombre del producto *
+                    Cantidad a ajustar
                   </label>
                   <Input
-                    type="text"
-                    required
-                    placeholder="Ej. Leche Entera 1L"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    type="number"
+                    min={1}
+                    value={addQuantity}
+                    onChange={(e) => setAddQuantity(Math.max(1, Number(e.target.value)))}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      SKU
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="Ej. LEC-001"
-                      value={form.sku}
-                      onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Stock inicial
-                    </label>
-                    <Input
-                      type="number"
-                      value={form.stock}
-                      onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Costo ($)
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.cost || ''}
-                      onChange={(e) => setForm({ ...form, cost: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Precio ($) *
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={form.price || ''}
-                      onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Stock mínimo
-                    </label>
-                    <Input
-                      type="number"
-                      value={form.min_stock}
-                      onChange={(e) => setForm({ ...form, min_stock: Number(e.target.value) })}
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                    Motivo
+                  </label>
+                  <select
+                    value={addReason}
+                    onChange={(e) => setAddReason(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  >
+                    {STOCK_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                  {(addReason === 'damaged' || addReason === 'lost') && (
+                    <p className="text-xs text-amber-600 mt-1">Esta opción restará stock</p>
+                  )}
                 </div>
 
                 <div className="flex gap-2 pt-2">
                   <Button
-                    type="button"
                     variant="outline"
                     onClick={handleReset}
+                    className="flex items-center gap-1"
                   >
-                    Cancelar
+                    <Scan className="h-4 w-4" />
+                    Escanear otro
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        Creando...
-                      </>
+                  <Button
+                    onClick={handleAddStock}
+                    disabled={isAddingStock || addQuantity <= 0}
+                    className="flex items-center gap-1"
+                  >
+                    {isAddingStock ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Crear producto
-                      </>
+                      <Package className="h-4 w-4" />
                     )}
+                    {addReason === 'damaged' || addReason === 'lost'
+                      ? `Quitar ${addQuantity}`
+                      : `Agregar ${addQuantity}`
+                    }
                   </Button>
                 </div>
-              </form>
+              </div>
             </Card>
           )}
 
@@ -323,10 +233,10 @@ export default function ScanningPage() {
             <Card className="p-6 text-center">
               <CheckCircle2 className="mx-auto h-12 w-12 text-green-500 mb-3" />
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                Producto creado
+                Stock actualizado
               </h2>
               <p className="text-sm text-gray-500 mb-4">
-                {product.name} fue registrado con el código {scannedCode}.
+                <strong>{product.name}</strong> — Stock actual: <strong>{product.stock}</strong>
               </p>
               <div className="flex justify-center gap-2">
                 <Button

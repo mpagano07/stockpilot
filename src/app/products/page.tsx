@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProducts } from '@/lib/hooks/useProducts';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -69,6 +69,15 @@ export default function ProductsPage() {
   });
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('create') === '1') {
+      const barcode = params.get('barcode') || '';
+      setProductForm((prev) => ({ ...prev, barcode }));
+      setIsProductModalOpen(true);
+    }
+  }, []);
   const [confirmAction, setConfirmAction] = useState<{
     type: 'delete-product' | 'delete-category';
     id: string;

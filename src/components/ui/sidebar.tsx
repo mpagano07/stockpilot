@@ -13,31 +13,38 @@ interface NavItem {
   name: string;
   href: string;
   icon?: React.ReactNode;
+  requiredPlan?: string[];
 }
 
+const ALL_PLANS = ['starter', 'business', 'enterprise'];
+
 const navItems: NavItem[] = [
-  { name: 'Dashboard', href: '/' },
-  { name: 'Ventas', href: '/sales' },
-  { name: 'Productos', href: '/products' },
-  { name: 'Proveedores', href: '/providers' },
-  { name: 'Clientes', href: '/customers' },
-  { name: 'Asistente IA', href: '/ai' },
-  { name: 'Pronóstico', href: '/forecast' },
-  { name: 'Antipérdidas', href: '/loss-prevention' },
-  { name: 'Visión Góndolas', href: '/shelf-vision' },
-  { name: 'Escáner', href: '/scanning' },
-  { name: 'Notificaciones', href: '/notifications' },
-  { name: 'Facturación', href: '/billing' },
-  { name: 'Configuración', href: '/settings' },
+  { name: 'Dashboard', href: '/', requiredPlan: ALL_PLANS },
+  { name: 'Ventas', href: '/sales', requiredPlan: ALL_PLANS },
+  { name: 'Productos', href: '/products', requiredPlan: ALL_PLANS },
+  { name: 'Proveedores', href: '/providers', requiredPlan: ALL_PLANS },
+  { name: 'Clientes', href: '/customers', requiredPlan: ALL_PLANS },
+  { name: 'Asistente IA', href: '/ai', requiredPlan: ['business', 'enterprise'] },
+  { name: 'Pronóstico', href: '/forecast', requiredPlan: ALL_PLANS },
+  { name: 'Antipérdidas', href: '/loss-prevention', requiredPlan: ALL_PLANS },
+  { name: 'Visión Góndolas', href: '/shelf-vision', requiredPlan: ['business', 'enterprise'] },
+  { name: 'Escáner', href: '/scanning', requiredPlan: ALL_PLANS },
+  { name: 'Notificaciones', href: '/notifications', requiredPlan: ALL_PLANS },
+  { name: 'Planes', href: '/billing', requiredPlan: ALL_PLANS },
+  { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS },
 ];
 
-function SidebarNav({ onNavClick }: { onNavClick?: () => void }) {
+function SidebarNav({ onNavClick, tenantPlan }: { onNavClick?: () => void; tenantPlan?: string }) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
 
+  const visibleItems = navItems.filter(
+    (item) => !item.requiredPlan || item.requiredPlan.includes(tenantPlan || 'starter')
+  );
+
   return (
     <>
-      {navItems.map((item) => (
+      {visibleItems.map((item) => (
         <Link
           key={item.name}
           href={item.href}
@@ -127,7 +134,7 @@ export function Sidebar() {
             </div>
             {tenant && <p className="text-xs text-gray-400 -mt-6 mb-4">{tenant.name}</p>}
             <nav className="flex-1 space-y-2 overflow-y-auto">
-              <SidebarNav onNavClick={close} />
+              <SidebarNav onNavClick={close} tenantPlan={tenant?.subscription_plan} />
             </nav>
             {userSection}
           </motion.aside>
@@ -141,7 +148,7 @@ export function Sidebar() {
           {tenant && <p className="text-xs text-gray-400 mt-1">{tenant.name}</p>}
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto">
-          <SidebarNav />
+          <SidebarNav tenantPlan={tenant?.subscription_plan} />
         </nav>
         {userSection}
       </aside>

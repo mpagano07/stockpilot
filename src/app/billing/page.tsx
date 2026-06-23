@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { PLANS } from '@/lib/plans';
 import { CreditCard, CheckCircle2, Loader2, Zap, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,6 +19,8 @@ export default function BillingPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -53,9 +56,8 @@ export default function BillingPage() {
     }
   };
 
-  const handleCancel = async () => {
-    if (!confirm('¿Estás seguro de cancelar la suscripción? Perderás acceso a las funciones premium.')) return;
-
+  const handleCancelConfirm = async () => {
+    setCancelling(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -68,6 +70,9 @@ export default function BillingPage() {
       setSubscription(null);
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setCancelling(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -89,7 +94,7 @@ export default function BillingPage() {
           <CreditCard className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Facturación y Plan</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Planes disponibles</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Gestioná tu suscripción y métodos de pago</p>
         </div>
       </div>
@@ -119,7 +124,7 @@ export default function BillingPage() {
               </div>
             </div>
             {subscription.status === 'active' && (
-              <Button variant="outline" onClick={handleCancel} className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50">
+              <Button variant="outline" onClick={() => setShowCancelModal(true)} className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50">
                 Cancelar suscripción
               </Button>
             )}
@@ -183,7 +188,7 @@ export default function BillingPage() {
               )}
 
               {isCurrent && subscription?.status === 'active' && (
-                <Button variant="outline" onClick={handleCancel} className="w-full text-red-600 border-red-200 hover:bg-red-50">
+                <Button variant="outline" onClick={() => setShowCancelModal(true)} className="w-full text-red-600 border-red-200 hover:bg-red-50">
                   Cancelar suscripción
                 </Button>
               )}
@@ -213,6 +218,18 @@ export default function BillingPage() {
           Contactar soporte
         </Button>
       </Card>
+
+      <ConfirmModal
+        open={showCancelModal}
+        title="Cancelar suscripción"
+        message="¿Estás seguro de cancelar la suscripción? Perderás acceso a las funciones premium."
+        confirmLabel="Sí, cancelar"
+        cancelLabel="Volver"
+        variant="danger"
+        loading={cancelling}
+        onConfirm={handleCancelConfirm}
+        onCancel={() => setShowCancelModal(false)}
+      />
     </div>
   );
 }
