@@ -39,8 +39,10 @@ function SidebarNav({ onNavClick, tenantPlan, userRole }: { onNavClick?: () => v
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
 
+  const effectivePlan = !tenantPlan || tenantPlan === 'free' ? 'starter' : tenantPlan;
+
   const visibleItems = navItems.filter((item) => {
-    if (item.requiredPlan && !item.requiredPlan.includes(tenantPlan || 'starter')) return false;
+    if (item.requiredPlan && !item.requiredPlan.includes(effectivePlan)) return false;
     if (item.requiredRole && !item.requiredRole.includes(userRole || '')) return false;
     return true;
   });

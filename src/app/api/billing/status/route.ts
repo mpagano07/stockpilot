@@ -16,18 +16,25 @@ export async function GET() {
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('subscription_status, subscription_plan, subscription_current_period_end')
+    .select('subscription_status, subscription_plan, subscription_current_period_end, created_at')
     .eq('id', tu[0].tenant_id)
     .single();
 
   const plan = (tenant?.subscription_plan as keyof typeof PLANS) || 'starter';
   const planConfig = PLANS[plan] || PLANS.starter;
 
+  const TRIAL_DAYS = 30;
+  const trialEndsAt = tenant?.created_at
+    ? new Date(new Date(tenant.created_at).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
   return NextResponse.json({
     plan: plan,
     planName: planConfig.name,
     status: tenant?.subscription_status || 'inactive',
     currentPeriodEnd: tenant?.subscription_current_period_end,
+    trialEndsAt,
+    createdAt: tenant?.created_at,
     features: planConfig.features,
   });
 }

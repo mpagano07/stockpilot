@@ -71,6 +71,8 @@ export async function POST(request: Request) {
         id: tenantId,
         name: companyName,
         slug: tenantSlug,
+        subscription_plan: 'starter',
+        subscription_status: 'free',
       }
     );
 

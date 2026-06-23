@@ -24,6 +24,8 @@ export default function BillingPage() {
     planName: string;
     status: string;
     currentPeriodEnd: string | null;
+    trialEndsAt: string | null;
+    createdAt: string | null;
     features: string[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,8 +98,94 @@ export default function BillingPage() {
 
   const currentPlanId = subscription?.plan || 'starter';
 
+  const trialEnd = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
+  const now = new Date();
+  const daysUntilRenewal = subscription?.currentPeriodEnd
+    ? Math.max(0, Math.floor((new Date(subscription.currentPeriodEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const daysUntilTrialEnd = trialEnd ? Math.max(-1, Math.floor((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null;
+
+  const isTrial = subscription?.status === 'free' || subscription?.status === 'inactive';
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Trial / Renewal banner */}
+      {subscription && (
+        <div className={`rounded-xl p-4 flex items-start gap-3 ${
+          isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+            ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900'
+            : isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+            ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900'
+            : 'bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900'
+        }`}>
+          <div className={`p-2 rounded-lg ${
+            isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+              ? 'bg-amber-100 dark:bg-amber-900/50'
+              : isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+              ? 'bg-red-100 dark:bg-red-900/50'
+              : 'bg-indigo-100 dark:bg-indigo-900/50'
+          }`}>
+            <CreditCard className={`h-5 w-5 ${
+              isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+                ? 'text-amber-600 dark:text-amber-400'
+                : isTrial && daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-indigo-600 dark:text-indigo-400'
+            }`} />
+          </div>
+          <div className="flex-1">
+            {isTrial ? (
+              <>
+                <p className={`text-sm font-semibold ${
+                  daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+                    ? 'text-amber-800 dark:text-amber-300'
+                    : daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+                    ? 'text-red-800 dark:text-red-300'
+                    : 'text-indigo-800 dark:text-indigo-300'
+                }`}>
+                  {daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+                    ? 'Tu período de prueba ha finalizado'
+                    : daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+                    ? `Tu período de prueba termina en ${daysUntilTrialEnd} día${daysUntilTrialEnd === 1 ? '' : 's'}`
+                    : `Te quedan ${daysUntilTrialEnd} días de prueba gratuita`}
+                </p>
+                <p className={`text-xs mt-0.5 ${
+                  daysUntilTrialEnd !== null && daysUntilTrialEnd <= 7
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-indigo-600 dark:text-indigo-400'
+                }`}>
+                  {daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
+                    ? 'Suscribite a un plan para seguir usando StockPilot'
+                    : 'Elegí un plan para no perder acceso a las funcionalidades'}
+                </p>
+              </>
+            ) : daysUntilRenewal !== null && daysUntilRenewal <= 7 ? (
+              <>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  Próximo cobro en {daysUntilRenewal} día{daysUntilRenewal === 1 ? '' : 's'}
+                </p>
+                <p className="text-xs mt-0.5 text-amber-600 dark:text-amber-400">
+                  {daysUntilRenewal === 0
+                    ? 'El cobro se procesará hoy'
+                    : `El ${new Date(subscription.currentPeriodEnd!).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })} se renovará tu suscripción`}
+                </p>
+              </>
+            ) : daysUntilRenewal !== null ? (
+              <>
+                <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300">
+                  {daysUntilRenewal} días hasta el próximo cobro
+                </p>
+                <p className="text-xs mt-0.5 text-indigo-600 dark:text-indigo-400">
+                  Próximo ciclo: {new Date(subscription.currentPeriodEnd!).toLocaleDateString('es-AR')}
+                </p>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600">
           <CreditCard className="h-6 w-6 text-white" />

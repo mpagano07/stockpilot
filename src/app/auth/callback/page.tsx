@@ -47,10 +47,21 @@ function CallbackContent() {
         return;
       }
 
-      // If no invites were pending, this might be a password reset flow.
-      // Redirect to reset-password — the session is already established,
-      // so the page will show the form immediately.
-      router.replace('/auth/reset-password');
+      const sessionRes = await fetch('/api/session', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'x-refresh-token': session.refresh_token ?? '',
+        },
+      });
+      const sessionData = await sessionRes.json();
+      const hasTenant = !!sessionData.tenant;
+
+      if (!hasTenant) {
+        router.replace('/onboarding');
+        return;
+      }
+
+      router.replace('/');
     });
   }, [searchParams, router]);
 
