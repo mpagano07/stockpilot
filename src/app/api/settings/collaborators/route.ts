@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, role } = body;
+    const { email, role, full_name } = body;
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -97,6 +97,8 @@ export async function POST(request: Request) {
     const validRoles = ['manager', 'member'];
     const assignRole = validRoles.includes(role) ? role : 'member';
 
+    const assignName = typeof full_name === 'string' && full_name.trim() ? full_name.trim() : null;
+
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id, email')
@@ -104,6 +106,13 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingProfile) {
+      if (assignName) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ full_name: assignName })
+          .eq('id', existingProfile.id);
+      }
+
       const { data: existingMember } = await supabaseAdmin
         .from('tenant_users')
         .select('id')
@@ -170,8 +179,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'User is already a member of this company' }, { status: 409 });
       }
 
+      const profileData: Record<string, any> = { id: authUser.id, email: authUser.email, tenant_id: ownership.tenantId };
+      if (assignName) profileData.full_name = assignName;
       const { error: createError } = await supabaseAdmin.from('profiles').upsert(
-        { id: authUser.id, email: authUser.email, tenant_id: ownership.tenantId },
+        profileData,
         { onConflict: 'id' }
       );
       if (createError) {

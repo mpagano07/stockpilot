@@ -8,8 +8,17 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { PLANS } from '@/lib/plans';
 import { CreditCard, CheckCircle2, Loader2, Zap, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 export default function BillingPage() {
+  const { role } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role && role === 'member') router.replace('/');
+  }, [role, router]);
+
   const [subscription, setSubscription] = useState<{
     plan: string;
     planName: string;

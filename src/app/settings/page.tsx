@@ -34,6 +34,7 @@ export default function SettingsPage() {
   const [loadingCollaborators, setLoadingCollaborators] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
+  const [inviteName, setInviteName] = useState('');
   const [inviting, setInviting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -83,7 +84,7 @@ export default function SettingsPage() {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, full_name: inviteName.trim() }),
       });
 
       const data = await res.json();
@@ -100,6 +101,7 @@ export default function SettingsPage() {
         setCollaborators((prev) => [...prev, data.collaborator]);
       }
       setInviteEmail('');
+      setInviteName('');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al invitar');
     } finally {
@@ -483,11 +485,19 @@ export default function SettingsPage() {
         )}
 
         {isOwner && (
-          <form onSubmit={handleInvite} className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <form onSubmit={handleInvite} className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Invitar colaborador
             </p>
             <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Nombre"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                />
+              </div>
               <div className="flex-1">
                 <Input
                   type="email"

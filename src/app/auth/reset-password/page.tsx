@@ -16,8 +16,33 @@ function ResetPasswordContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    let tokenParam = searchParams?.get('token');
+    if (!tokenParam && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      tokenParam = url.searchParams.get('token');
+    }
+
+    if (tokenParam) {
+      setToken(tokenParam);
+      fetch('/api/auth/verify-reset-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenParam }),
+      }).then(async (res) => {
+        const data = await res.json();
+        if (data.valid) {
+          setReady(true);
+        } else {
+          toast.error(data.error || 'Link inválido o expirado');
+          router.push('/login');
+        }
+      });
+      return;
+    }
+
     let code = searchParams?.get('code');
     if (!code && typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -33,16 +58,17 @@ function ResetPasswordContent() {
         }
         setReady(true);
       });
-    } else {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          setReady(true);
-        } else {
-          toast.error('Link inválido');
-          router.push('/login');
-        }
-      });
+      return;
     }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setReady(true);
+      } else {
+        toast.error('Link inválido');
+        router.push('/login');
+      }
+    });
   }, [searchParams, router]);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -61,9 +87,18 @@ function ResetPasswordContent() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-
-      if (error) throw error;
+      if (token) {
+        const res = await fetch('/api/auth/update-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+      } else {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      }
 
       toast.success('Contraseña actualizada correctamente');
       router.push('/login');

@@ -7,6 +7,8 @@ import { Loader2, TrendingUp, AlertTriangle, Package, DollarSign, BarChart3, Spa
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 interface Prediction {
   productId: string;
@@ -25,6 +27,13 @@ interface Prediction {
 }
 
 export default function ForecastPage() {
+  const { role } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role && role === 'member') router.replace('/');
+  }, [role, router]);
+
   const [data, setData] = useState<{
     predictions: Prediction[];
     topProducts: Prediction[];
