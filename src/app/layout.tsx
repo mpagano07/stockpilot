@@ -2,6 +2,7 @@ import './globals.css';
 import React from 'react';
 import { Sidebar } from '@/components/ui/sidebar';
 import { Header } from '@/components/ui/header';
+import { SidebarProvider } from '@/lib/contexts/sidebar-context';
 
 import { Toaster } from 'react-hot-toast';
 import type { Metadata, Viewport } from 'next';
@@ -34,6 +35,7 @@ export default function RootLayout({
       <head />
       <body className="min-h-screen bg-gray-50 antialiased dark:bg-gray-950 flex flex-col md:flex-row font-sans">
         <Toaster position="top-right" />
+        <SidebarProvider>
         <React.Suspense fallback={<div />}> 
           <Sidebar />
         </React.Suspense>
@@ -47,6 +49,7 @@ export default function RootLayout({
             </div>
           </main>
         </div>
+        </SidebarProvider>
       </body>
     </html>
   );

@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils/cn';
-import { Bell, CheckCheck, ArrowRight } from 'lucide-react';
+import { Bell, CheckCheck, ArrowRight, Menu } from 'lucide-react';
+import { useSidebar } from '@/lib/contexts/sidebar-context';
 
 export function Header() {
   const pathname = usePathname();
@@ -16,6 +17,7 @@ export function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebar();
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,7 +71,14 @@ export function Header() {
 
   return (
     <header className={cn('flex h-14 items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4')}>
-      <div className="flex items-center space-x-2" />
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={toggleSidebar}
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          <Menu className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+        </button>
+      </div>
 
       <div className="flex items-center space-x-1">
         {/* Notification Bell */}
