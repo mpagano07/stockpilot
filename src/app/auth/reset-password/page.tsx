@@ -18,21 +18,31 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const code = searchParams?.get('code');
-    if (!code) {
-      toast.error('Link inválido');
-      router.push('/login');
-      return;
+    let code = searchParams?.get('code');
+    if (!code && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      code = url.searchParams.get('code');
     }
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        toast.error(error.message);
-        router.push('/login');
-        return;
-      }
-      setReady(true);
-    });
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) {
+          toast.error(error.message);
+          router.push('/login');
+          return;
+        }
+        setReady(true);
+      });
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setReady(true);
+        } else {
+          toast.error('Link inválido');
+          router.push('/login');
+        }
+      });
+    }
   }, [searchParams, router]);
 
   const handleReset = async (e: React.FormEvent) => {

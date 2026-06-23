@@ -10,7 +10,11 @@ function CallbackContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const code = searchParams?.get('code');
+    let code = searchParams?.get('code');
+    if (!code && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      code = url.searchParams.get('code');
+    }
 
     if (!code) {
       router.replace('/login?error=missing_code');
@@ -43,7 +47,10 @@ function CallbackContent() {
         return;
       }
 
-      router.replace('/');
+      // If no invites were pending, this might be a password reset flow.
+      // Redirect to reset-password — the session is already established,
+      // so the page will show the form immediately.
+      router.replace('/auth/reset-password');
     });
   }, [searchParams, router]);
 
