@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase';
+import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { checkSubscriptionBlocked } from '@/lib/checkSubscription';
 
 const publicPaths = ['/login', '/auth', '/onboarding', '/accept-invite'];
@@ -15,7 +16,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const supabase = await createServerSupabaseClient();
+  const response = NextResponse.next();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -35,12 +52,17 @@ export async function proxy(request: NextRequest) {
   }
 
   if (unprotectedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    const response = NextResponse.next();
     response.headers.set('x-tenant-id', profile.tenant_id);
     return response;
   }
 
-  const { data: tenant } = await supabase
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  const { data: tenant } = await admin
     .from('tenants')
     .select('subscription_status, subscription_plan, created_at, subscription_current_period_end')
     .eq('id', profile.tenant_id)
@@ -54,7 +76,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const response = NextResponse.next();
   response.headers.set('x-tenant-id', profile.tenant_id);
   return response;
 }
