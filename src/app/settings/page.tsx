@@ -44,7 +44,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (role && role === 'member') {
-      router.replace('/');
+      router.replace('/dashboard');
     }
   }, [role, router]);
 

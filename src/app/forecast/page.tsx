@@ -31,7 +31,7 @@ export default function ForecastPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (role && role === 'member') router.replace('/');
+    if (role && role === 'member') router.replace('/dashboard');
   }, [role, router]);
 
   const [data, setData] = useState<{

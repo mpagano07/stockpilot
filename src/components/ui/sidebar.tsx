@@ -20,7 +20,7 @@ interface NavItem {
 const ALL_PLANS = ['starter', 'business', 'enterprise'];
 
 const navItems: NavItem[] = [
-  { name: 'Dashboard', href: '/', requiredPlan: ALL_PLANS },
+  { name: 'Dashboard', href: '/dashboard', requiredPlan: ALL_PLANS },
   { name: 'Ventas', href: '/sales', requiredPlan: ALL_PLANS },
   { name: 'Productos', href: '/products', requiredPlan: ALL_PLANS },
   { name: 'Proveedores', href: '/providers', requiredPlan: ALL_PLANS },

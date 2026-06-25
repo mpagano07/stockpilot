@@ -38,7 +38,7 @@ export default function AcceptInvitePage() {
         if (data.accepted > 0) {
           setStatus('accepted');
         } else {
-          router.push('/');
+          router.push('/dashboard');
         }
       } catch {
         setStatus('error');
@@ -78,7 +78,7 @@ export default function AcceptInvitePage() {
       if (passError) throw passError;
 
       toast.success('¡Bienvenido!');
-      router.push('/');
+      router.push('/dashboard');
     } catch {
       toast.error('Error al guardar');
     } finally {

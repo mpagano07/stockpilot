@@ -20,7 +20,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
 
-  const redirectTo = searchParams?.get('redirect') || '/';
+  const redirectTo = searchParams?.get('redirect') || '/dashboard';
 
   useEffect(() => {
     const saved = localStorage.getItem('stockpilot_remember');

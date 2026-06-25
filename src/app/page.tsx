@@ -1,341 +1,360 @@
-"use client";
+'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/hooks/useAuth';
-import { useProducts } from '@/lib/hooks/useProducts';
-import { supabase } from '@/lib/supabaseClient';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Package, AlertOctagon, TrendingUp, Users, ArrowRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { PLANS } from '@/lib/plans';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const { profile, tenant, loading: authLoading, isAuthenticated } = useAuth();
-  const { products, isLoading: productsLoading } = useProducts(tenant?.id);
+const chartData = [
+  { name: 'Lun', ventas: 4200 },
+  { name: 'Mar', ventas: 3800 },
+  { name: 'Mié', ventas: 5100 },
+  { name: 'Jue', ventas: 4700 },
+  { name: 'Vie', ventas: 6300 },
+  { name: 'Sáb', ventas: 5500 },
+  { name: 'Dom', ventas: 4800 },
+];
 
-  useEffect(() => {
-    if (!authLoading && isAuthenticated && !tenant) {
-      router.replace('/onboarding');
+export default function LandingPage() {
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistDone, setWaitlistDone] = useState(false);
+
+  const handleWaitlist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError('');
+    if (!email.trim()) {
+      setEmailError('Ingresá tu email para continuar');
+      return;
     }
-  }, [authLoading, isAuthenticated, tenant, router]);
-  const [salesData, setSalesData] = useState<{ todayTotal: number; saleCount: number } | null>(null);
-  const [salesLoading, setSalesLoading] = useState(true);
-  const [salesChartData, setSalesChartData] = useState<{ date: string; day: string; total: number }[]>([]);
-  const [chartLoading, setChartLoading] = useState(true);
-
-  useEffect(() => {
-    if (!tenant?.id) return;
-
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers: Record<string, string> = {};
-        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-
-        const [salesRes, summaryRes] = await Promise.all([
-          fetch('/api/sales', { headers }),
-          fetch('/api/sales/summary', { headers }),
-        ]);
-
-        if (salesRes.ok) {
-          const sales: Record<string, unknown>[] = await salesRes.json();
-          const today = new Date();
-          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-          const todaySales = sales.filter(s => (s.created_at as string) >= todayStart);
-          const todayTotal = todaySales.reduce((sum, s) => sum + ((s.total_cents as number) || 0), 0);
-          setSalesData({ todayTotal, saleCount: todaySales.length });
-        }
-
-        if (summaryRes.ok) {
-          const summary = await summaryRes.json();
-          setSalesChartData(summary);
-        }
-      } catch (err) {
-        console.error('Error fetching sales:', err);
-      } finally {
-        setSalesLoading(false);
-        setChartLoading(false);
-      }
-    })();
-  }, [tenant?.id]);
-
-  useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError('Email inválido');
+      return;
     }
-  }, [authLoading, isAuthenticated, router]);
-
-  if (authLoading || productsLoading || salesLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-1/3 animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="h-28 bg-gray-100 dark:bg-gray-800 animate-pulse" />
-          ))}
-        </div>
-        <Card className="h-64 bg-gray-100 dark:bg-gray-800 animate-pulse" />
-        <Card className="h-48 bg-gray-100 dark:bg-gray-800 animate-pulse" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const totalProducts = products?.length || 0;
-  const criticalProducts = products?.filter(p => (p.stock ?? 0) <= (p.min_stock ?? 0)) || [];
-  const criticalCount = criticalProducts.length;
+    setWaitlistLoading(true);
+    await new Promise(r => setTimeout(r, 1000));
+    setWaitlistDone(true);
+    setWaitlistLoading(false);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
-            ¡Hola, {profile?.full_name || 'Usuario'}!
-          </h1>
-          {tenant && (
-            <div className="flex items-center gap-2 mt-2">
-              <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{(tenant.name || 'T')[0].toUpperCase()}</span>
-              </div>
-              <p className="text-base font-semibold text-gray-700 dark:text-gray-300">
-                {tenant.name}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Ventas hoy</h3>
-            <p className="text-3xl font-extrabold mt-2 text-gray-900 dark:text-white">
-              ${salesData ? (salesData.todayTotal / 100).toFixed(2) : '0.00'}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              {salesData ? `${salesData.saleCount} venta(s)` : 'Sin ventas'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400">
-            <TrendingUp className="h-6 w-6" />
-          </div>
-        </Card>
-
-        <Card className="p-6 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Stock crítico</h3>
-            <p className={`text-3xl font-extrabold mt-2 ${criticalCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
-              {criticalCount}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">Requieren reposición</p>
-          </div>
-          <div className={`p-3 rounded-lg ${criticalCount > 0 ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-400'}`}>
-            <AlertOctagon className="h-6 w-6" />
-          </div>
-        </Card>
-
-        <Card className="p-6 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total productos</h3>
-            <p className="text-3xl font-extrabold mt-2 text-gray-900 dark:text-white">{totalProducts}</p>
-            <p className="text-xs text-gray-500 mt-2">Variantes registradas</p>
-          </div>
-          <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
-            <Package className="h-6 w-6" />
-          </div>
-        </Card>
-
-        <Card className="p-6 flex items-start justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Colaboradores</h3>
-            <p className="text-3xl font-extrabold mt-2 text-gray-900 dark:text-white">1</p>
-            <p className="text-xs text-gray-500 mt-2">Usuarios activos</p>
-          </div>
-          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400">
-            <Users className="h-6 w-6" />
-          </div>
-        </Card>
-      </div>
-
-      {/* Sales Chart */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-indigo-500" />
-            Ventas de los últimos 7 días
-          </h2>
-        </div>
-        {chartLoading ? (
-          <div className="h-52 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg" />
-        ) : salesChartData.length === 0 || salesChartData.every(d => d.total === 0) ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50/50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
-            <BarChart3 className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Sin ventas aún</p>
-            <p className="text-xs text-gray-500 mt-0.5">Las ventas registradas aparecerán aquí.</p>
-          </div>
-        ) : (
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                <Tooltip
-                  formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Total']}
-                  labelFormatter={(label, payload) => {
-                    const item = (payload as any[])?.[0]?.payload;
-                    return item?.date || label;
-                  }}
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="total" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
-
-      {/* Main Grid Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Critical Stock items */}
-        <Card className="lg:col-span-2 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <AlertOctagon className="h-5 w-5 text-rose-500" />
-              Alertas de Stock Mínimo
-            </h2>
-            <Link href="/products" className="text-xs text-indigo-600 hover:text-indigo-500 font-semibold flex items-center gap-0.5">
-              Ver todo <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {criticalCount === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50/50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-200 dark:border-gray-800">
-              <CheckCircle2 className="h-10 w-10 text-green-500 mb-2" />
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Todo en orden</p>
-              <p className="text-xs text-gray-500 mt-0.5">No tienes productos por debajo del stock mínimo.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {criticalProducts.slice(0, 5).map((product) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-3.5 bg-rose-50/30 dark:bg-rose-950/10 rounded-lg border border-rose-100/50 dark:border-rose-950/30"
-                >
-                  <div>
-                    <span className="font-semibold text-sm text-gray-900 dark:text-white">{product.name}</span>
-                    <div className="text-xs text-gray-500 mt-0.5">SKU: {product.sku || '—'}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-xs font-semibold text-rose-600 dark:text-rose-400">Stock: {product.stock}</div>
-                      <div className="text-[10px] text-gray-400">Min. Requerido: {product.min_stock}</div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push('/products')}
-                      className="h-8 border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/30 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                    >
-                      Surtir
-                    </Button>
-                  </div>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-800/50 bg-gray-950/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-cyan-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">S</span>
                 </div>
-              ))}
-              {criticalCount > 5 && (
-                <p className="text-xs text-center text-gray-500 pt-2">
-                  Y otros {criticalCount - 5} productos más en estado crítico.
-                </p>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Right Column - Checklist Actions */}
-        <Card className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Primeros Pasos</h2>
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center font-bold text-xs">✓</span>
-              <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Crear Empresa</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Completaste el onboarding de tu negocio.</p>
+                <span className="text-lg font-bold text-white">StockPilot</span>
+              </Link>
+              <div className="hidden md:flex items-center gap-6">
+                <Link href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">Características</Link>
+                <Link href="#how-it-works" className="text-sm text-gray-400 hover:text-white transition-colors">Cómo funciona</Link>
+                <Link href="#pricing" className="text-sm text-gray-400 hover:text-white transition-colors">Precios</Link>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-gray-300 hover:text-white transition-colors px-4 py-2"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="text-sm font-medium bg-cyan-500 hover:bg-cyan-400 text-black px-4 py-2 rounded-lg transition-colors"
+              >
+                Comenzar gratis
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
 
-            <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                totalProducts > 0 
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
-              }`}>
-                {totalProducts > 0 ? '✓' : '2'}
-              </span>
-              <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Registrar Productos</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Agrega tus productos al catálogo de inventario.</p>
-                {totalProducts === 0 && (
-                  <Button
-                    size="sm"
-                    className="mt-2 text-xs h-7 px-3"
-                    onClick={() => router.push('/products')}
-                  >
-                    Agregar producto
-                  </Button>
-                )}
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-cyan-500/5 rounded-full blur-3xl" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                Gestión de stock con IA
               </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight">
+                Controlá tu{' '}
+                <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">inventario</span>
+                {' '}en tiempo real
+              </h1>
+              <p className="mt-6 text-lg text-gray-400 leading-relaxed max-w-lg">
+                Olvidate de las planillas. Escaneá productos con tu teléfono, sincronizá al instante con tu negocio y recibí alertas inteligentes de reposición.
+              </p>
+              <form onSubmit={handleWaitlist} noValidate className="mt-8 flex gap-3 max-w-md">
+                <div className="flex-1">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+                    placeholder="tu@email.com"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 text-sm"
+                  />
+                  {emailError && <p className="text-xs text-red-400 mt-1.5">{emailError}</p>}
+                </div>
+                <button
+                  type="submit"
+                  disabled={waitlistLoading || waitlistDone}
+                  className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-lg transition-colors text-sm disabled:opacity-50 h-fit"
+                >
+                  {waitlistLoading ? 'Enviando...' : waitlistDone ? '¡Registrado!' : 'Comenzar gratis'}
+                </button>
+              </form>
+              <p className="mt-3 text-xs text-gray-600">Sin compromiso. 30 días de prueba gratuita.</p>
             </div>
 
-            <div className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${
-                salesData && salesData.saleCount > 0
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
-              }`}>
-                {salesData && salesData.saleCount > 0 ? '✓' : '3'}
-              </span>
-              <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Registrar tu primera venta</h4>
-                <p className="text-xs text-gray-500 mt-0.5">Comienza a operar vendiendo tus productos registrados.</p>
-                {(!salesData || salesData.saleCount === 0) && (
-                  <Button
-                    size="sm"
-                    className="mt-2 text-xs h-7 px-3"
-                    onClick={() => router.push('/sales')}
-                  >
-                    Registrar venta
-                  </Button>
-                )}
+            {/* Dashboard Preview */}
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-transparent to-blue-500/10 rounded-2xl blur-2xl" />
+              <div className="relative bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-2xl">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-3 h-3 rounded-full bg-red-500" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                  <div className="w-3 h-3 rounded-full bg-green-500" />
+                  <span className="ml-2 text-xs text-gray-500">Dashboard Preview</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  {[
+                    { label: 'Ventas hoy', value: '$4.850', color: 'text-cyan-400' },
+                    { label: 'Productos', value: '1.247', color: 'text-blue-400' },
+                    { label: 'Alertas', value: '3', color: 'text-amber-400' },
+                  ].map(k => (
+                    <div key={k.label} className="bg-gray-950/60 rounded-lg p-3 border border-gray-800/50">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">{k.label}</p>
+                      <p className={`text-lg font-bold mt-1 ${k.color}`}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} />
+                      <YAxis hide />
+                      <Bar dataKey="ventas" fill="#06b6d4" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <p className="text-xs text-amber-400/90"><span className="font-semibold">Alerta:</span> 3 productos con stock crítico</p>
+                </div>
               </div>
             </div>
           </div>
-        </Card>
-      </div>
+        </div>
+      </section>
+
+      {/* Comparison Section */}
+      <section className="py-20" id="features">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold">El método antiguo vs <span className="text-cyan-400">StockPilot</span></h2>
+            <p className="mt-4 text-gray-400">La diferencia entre sobrevivir y escalar tu negocio.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
+              <div className="text-4xl mb-4">📋</div>
+              <h3 className="text-xl font-bold text-gray-300 mb-4">Excel + papel</h3>
+              <ul className="space-y-3">
+                {[
+                  'Actualización manual de stock',
+                  'Errores de tipeo y descuadres',
+                  'Sin alertas de reposición',
+                  'Datos desactualizados',
+                  'Difícil de compartir con el equipo',
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-3 text-sm text-gray-500">
+                    <span className="text-red-400 mt-0.5">✕</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-8 relative">
+              <div className="absolute -top-3 left-8 px-3 py-1 bg-cyan-500 text-black text-xs font-bold rounded-full">Recomendado</div>
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-bold text-cyan-400 mb-4">StockPilot</h3>
+              <ul className="space-y-3">
+                {[
+                  'Escaneo móvil en tiempo real',
+                  'Sincronización automática 2-way',
+                  'Alertas inteligentes de bajo stock',
+                  'Pronósticos con IA',
+                  'Acceso multi-dispositivo',
+                ].map(item => (
+                  <li key={item} className="flex items-start gap-3 text-sm text-gray-300">
+                    <span className="text-cyan-400 mt-0.5">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-20 bg-gray-900/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold">Todo lo que necesitás para gestionar tu stock</h2>
+            <p className="mt-4 text-gray-400">Una plataforma completa para tu negocio.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+            {[
+              {
+                icon: '📱',
+                title: 'Teléfono como escáner',
+                desc: 'Usá la cámara de tu celular para escanear códigos de barras y actualizar el stock al instante.',
+              },
+              {
+                icon: '🔔',
+                title: 'Alertas de bajo stock',
+                desc: 'Recibí notificaciones cuando un producto está por debajo del mínimo. Nunca más te quedés sin stock.',
+              },
+            ].map(f => (
+              <div key={f.title} className="bg-gray-950 border border-gray-800 rounded-2xl p-8 hover:border-cyan-500/30 transition-colors">
+                <div className="text-4xl mb-4">{f.icon}</div>
+                <h3 className="text-lg font-bold mb-3">{f.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works - 3 steps */}
+      <section className="py-20" id="how-it-works">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold">Empezá en <span className="text-cyan-400">3 pasos</span></h2>
+            <p className="mt-4 text-gray-400">Menos de 5 minutos y ya estás operando.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Importá tu catálogo', desc: 'Subí tu lista de productos desde Excel o conectá con tu tienda existente.' },
+              { step: '02', title: 'Escaneá productos', desc: 'Usá tu teléfono para escanear códigos de barras y registrar movimientos.' },
+              { step: '03', title: 'Sincronizá todo', desc: 'El stock se actualiza automáticamente en todos tus canales de venta.' },
+            ].map(s => (
+              <div key={s.step} className="text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6">
+                  <span className="text-2xl font-bold text-cyan-400">{s.step}</span>
+                </div>
+                <h3 className="text-lg font-bold mb-3">{s.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="py-20 bg-gray-900/30" id="pricing">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold">Planes simples y transparentes</h2>
+            <p className="mt-4 text-gray-400">Elegí el plan que mejor se adapte a tu negocio.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {Object.entries(PLANS).map(([id, plan], idx) => {
+              const isPopular = id === 'starter';
+              return (
+                <div
+                  key={id}
+                  className={`relative rounded-2xl p-8 ${
+                    isPopular
+                      ? 'bg-gray-900 border-2 border-cyan-500/40 shadow-xl shadow-cyan-500/5'
+                      : 'bg-gray-950 border border-gray-800'
+                  }`}
+                >
+                  {isPopular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-cyan-500 text-black text-xs font-bold rounded-full">
+                      30 días de prueba gratis
+                    </div>
+                  )}
+                  <h3 className="text-lg font-bold mb-2">{plan.name}</h3>
+                  <div className="mb-6">
+                    <span className="text-4xl font-extrabold">${plan.price.toLocaleString('es-AR')}</span>
+                    <span className="text-sm text-gray-500 ml-1">/mes</span>
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((f, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
+                        <span className="text-cyan-400 mt-0.5">✓</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href="/auth/signup"
+                    className={`block text-center w-full py-3 rounded-lg font-semibold text-sm transition-colors ${
+                      isPopular
+                        ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
+                        : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700'
+                    }`}
+                  >
+                    {id === 'enterprise' ? 'Contactar' : 'Comenzar gratis'}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6">
+            ¿Listo para dejar atrás las planillas?
+          </h2>
+          <p className="text-gray-400 mb-8 max-w-lg mx-auto">
+            Unite a los cientos de negocios que ya gestionan su stock con StockPilot.
+          </p>
+          <Link
+            href="/auth/signup"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-xl text-lg transition-colors"
+          >
+            Comenzar gratis
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 border-t border-gray-800/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-cyan-500 flex items-center justify-center">
+                <span className="text-white font-bold text-xs">S</span>
+              </div>
+              <span className="text-sm font-bold text-white">StockPilot</span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-gray-500">
+              <Link href="#" className="hover:text-gray-300 transition-colors">Privacidad</Link>
+              <Link href="#" className="hover:text-gray-300 transition-colors">Términos</Link>
+              <span>© 2026 StockPilot</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
-

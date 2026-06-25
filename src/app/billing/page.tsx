@@ -16,7 +16,7 @@ export default function BillingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (role && role === 'member') router.replace('/');
+    if (role && role === 'member') router.replace('/dashboard');
   }, [role, router]);
 
   const [subscription, setSubscription] = useState<{

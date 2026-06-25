@@ -1,8 +1,6 @@
 import './globals.css';
 import React from 'react';
-import { Sidebar } from '@/components/ui/sidebar';
-import { Header } from '@/components/ui/header';
-import { SidebarProvider } from '@/lib/contexts/sidebar-context';
+import { ClientLayoutWrapper } from '@/components/layout/ClientLayoutWrapper';
 
 import { Toaster } from 'react-hot-toast';
 import type { Metadata, Viewport } from 'next';
@@ -33,23 +31,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head />
-      <body className="min-h-screen bg-gray-50 antialiased dark:bg-gray-950 flex flex-col md:flex-row font-sans">
+      <body className="min-h-screen bg-gray-50 antialiased dark:bg-gray-950 font-sans">
         <Toaster position="top-right" />
-        <SidebarProvider>
-        <React.Suspense fallback={<div />}> 
-          <Sidebar />
-        </React.Suspense>
-        <div className="flex flex-col flex-1 w-full">
-          <React.Suspense fallback={<div />}>
-            <Header />
-          </React.Suspense>
-          <main className="flex-1 w-full overflow-auto">
-            <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-              {children}
-            </div>
-          </main>
-        </div>
-        </SidebarProvider>
+        <ClientLayoutWrapper>
+          {children}
+        </ClientLayoutWrapper>
       </body>
     </html>
   );
