@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkAndNotifyStock } from '@/lib/notifications';
+import { createActivityLog } from '@/lib/activity-log';
 
-async function getAuthenticatedTenant(): Promise<string | null> {
+async function getAuthenticatedTenant(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -14,7 +15,7 @@ async function getAuthenticatedTenant(): Promise<string | null> {
     .eq('user_id', user.id);
 
   if (!tu || tu.length === 0) return null;
-  return (tu as any)[0].tenant_id;
+  return { tenantId: (tu as any)[0].tenant_id, userId: user.id };
 }
 
 export async function PATCH(
@@ -22,8 +23,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -42,7 +43,7 @@ export async function PATCH(
       .from('products')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', auth.tenantId)
       .select()
       .single();
 
@@ -51,8 +52,17 @@ export async function PATCH(
     }
 
     if (body.stock !== undefined || body.min_stock !== undefined) {
-      await checkAndNotifyStock(tenantId, id);
+      await checkAndNotifyStock(auth.tenantId, id);
     }
+
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'updated',
+      entityType: 'product',
+      entityId: id,
+      details: { name: data?.name },
+    });
 
     return NextResponse.json({ ...data, price: (data as any).price_cents != null ? (data as any).price_cents / 100 : 0 });
   } catch {
@@ -65,18 +75,26 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const { error } = await supabaseAdmin
+  const { data: deleted } = await supabaseAdmin
     .from('products')
     .delete()
     .eq('id', id)
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', auth.tenantId)
+    .select('name')
+    .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
+  if (!deleted) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+
+  await createActivityLog({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    action: 'deleted',
+    entityType: 'product',
+    details: { name: (deleted as any).name },
+  });
 
   return NextResponse.json({ success: true });
 }

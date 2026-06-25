@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkAndNotifyStock } from '@/lib/notifications';
+import { createActivityLog } from '@/lib/activity-log';
 
-async function getAuthenticatedTenant(): Promise<string | null> {
+async function getAuthenticatedTenant(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -14,7 +15,7 @@ async function getAuthenticatedTenant(): Promise<string | null> {
     .eq('user_id', user.id);
 
   if (!tu || tu.length === 0) return null;
-  return tu[0].tenant_id;
+  return { tenantId: tu[0].tenant_id, userId: user.id };
 }
 
 async function resolveCategory(tenantId: string, name: string): Promise<string | null> {
@@ -42,8 +43,8 @@ async function resolveCategory(tenantId: string, name: string): Promise<string |
 const ALLOWED_FIELDS = ['sku', 'barcode', 'name', 'description', 'cost', 'stock', 'min_stock', 'max_stock', 'image_url', 'metadata'];
 
 export async function POST(request: Request) {
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const body = await request.json();
   const products = body.products as Record<string, any>[];
@@ -62,14 +63,14 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const upsertData: Record<string, any> = { tenant_id: tenantId };
+      const upsertData: Record<string, any> = { tenant_id: auth.tenantId };
       if (row.price !== undefined) upsertData.price_cents = Math.round(Number(row.price) * 100);
       for (const key of ALLOWED_FIELDS) {
         if (row[key] !== undefined && row[key] !== null && row[key] !== '') upsertData[key] = row[key];
       }
 
       if (row.category_name?.trim()) {
-        const categoryId = await resolveCategory(tenantId, row.category_name);
+        const categoryId = await resolveCategory(auth.tenantId, row.category_name);
         if (categoryId) upsertData.category_id = categoryId;
       }
 
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
         const { data: existing } = await supabaseAdmin
           .from('products')
           .select('id')
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', auth.tenantId)
           .eq('sku', row.sku)
           .maybeSingle();
         if (existing) existingId = existing.id;
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
         const { data: existing } = await supabaseAdmin
           .from('products')
           .select('id')
-          .eq('tenant_id', tenantId)
+          .eq('tenant_id', auth.tenantId)
           .eq('barcode', row.barcode)
           .maybeSingle();
         if (existing) existingId = existing.id;
@@ -101,13 +102,13 @@ export async function POST(request: Request) {
           .from('products')
           .update(upsertData)
           .eq('id', existingId)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', auth.tenantId);
 
         if (error) {
           results.push({ row: i + 1, status: 'skipped', name: row.name, error: error.message });
         } else {
           if (row.stock !== undefined || row.min_stock !== undefined) {
-            await checkAndNotifyStock(tenantId, existingId);
+            await checkAndNotifyStock(auth.tenantId, existingId);
           }
           results.push({ row: i + 1, status: 'updated', name: row.name });
         }
@@ -130,6 +131,14 @@ export async function POST(request: Request) {
   const created = results.filter(r => r.status === 'created').length;
   const updated = results.filter(r => r.status === 'updated').length;
   const skipped = results.filter(r => r.status === 'skipped').length;
+
+  await createActivityLog({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    action: 'imported',
+    entityType: 'import',
+    details: { created, updated, skipped, total: products.length },
+  });
 
   return NextResponse.json({ results, summary: { created, updated, skipped, total: products.length } });
 }

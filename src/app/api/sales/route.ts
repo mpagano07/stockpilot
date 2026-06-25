@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { checkAndNotifyStock } from '@/lib/notifications';
+import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedUser(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
@@ -164,6 +165,18 @@ export async function POST(request: Request) {
 
       await checkAndNotifyStock(auth.tenantId, item.product_id);
     }
+
+    const itemNames = saleItems.map(i => i.product_name).slice(0, 3);
+    const detail = itemNames.join(', ') + (saleItems.length > 3 ? ` y ${saleItems.length - 3} más` : '');
+
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'created',
+      entityType: 'sale',
+      entityId: sale.id,
+      details: { total_cents, items_count: saleItems.length, products: detail, folio: sale.id.slice(0, 8) },
+    });
 
     return NextResponse.json({ ...sale, items: itemsWithSaleId }, { status: 201 });
   } catch (err: unknown) {

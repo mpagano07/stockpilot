@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedUser(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
@@ -161,6 +162,15 @@ export async function POST(request: Request) {
       await supabaseAdmin.from('purchase_orders').delete().eq('id', order.id);
       return NextResponse.json({ error: itemsError.message }, { status: 400 });
     }
+
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'created',
+      entityType: 'purchase_order',
+      entityId: order.id,
+      details: { folio: order.id.slice(0, 8), supplier_id, total_cents, items_count: items.length },
+    });
 
     return NextResponse.json(order, { status: 201 });
   } catch (err: unknown) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createNotification } from '@/lib/notifications';
+import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedUser(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
@@ -109,6 +110,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         data: { purchase_order_id: id },
       });
     }
+
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: status === 'received' ? 'received' : 'cancelled',
+      entityType: 'purchase_order',
+      entityId: id,
+      details: { folio: id.slice(0, 8) },
+    });
 
     return NextResponse.json(order);
   } catch (err: unknown) {

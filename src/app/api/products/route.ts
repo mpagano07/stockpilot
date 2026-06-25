@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createActivityLog } from '@/lib/activity-log';
 
-async function getAuthenticatedTenant(): Promise<string | null> {
+async function getAuthenticatedTenant(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -13,17 +14,17 @@ async function getAuthenticatedTenant(): Promise<string | null> {
     .eq('user_id', user.id);
 
   if (!tu || tu.length === 0) return null;
-  return (tu as any)[0].tenant_id;
+  return { tenantId: (tu as any)[0].tenant_id, userId: user.id };
 }
 
 export async function GET() {
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const { data, error } = await supabaseAdmin
     .from('products')
     .select('*')
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', auth.tenantId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -35,12 +36,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const body = await request.json();
   const allowedFields = ['category_id', 'sku', 'barcode', 'name', 'description', 'cost', 'stock', 'min_stock', 'max_stock', 'image_url', 'metadata'];
-  const insertData: Record<string, any> = { tenant_id: tenantId };
+  const insertData: Record<string, any> = { tenant_id: auth.tenantId };
   if (body.price !== undefined) insertData.price_cents = Math.round(body.price * 100);
   for (const key of allowedFields) {
     if (body[key] !== undefined) insertData[key] = body[key];
@@ -53,5 +54,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
   const created = data?.[0];
+  if (created) {
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'created',
+      entityType: 'product',
+      entityId: created.id,
+      details: { name: created.name, sku: created.sku },
+    });
+  }
   return NextResponse.json(created ? { ...created, price: (created as any).price_cents != null ? (created as any).price_cents / 100 : 0 } : null, { status: 201 });
 }

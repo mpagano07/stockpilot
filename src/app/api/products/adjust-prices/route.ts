@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
+import { createActivityLog } from '@/lib/activity-log';
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -67,6 +68,14 @@ export async function POST(request: Request) {
       errors.push({ id: update.id, name: update.name, error: updateError.message });
     }
   }
+
+  await createActivityLog({
+    tenantId,
+    userId: user.id,
+    action: 'adjusted',
+    entityType: 'product',
+    details: { percentage, total: updates.length, updated: updates.length - errors.length },
+  });
 
   return NextResponse.json({
     success: errors.length === 0,

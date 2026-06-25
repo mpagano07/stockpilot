@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createActivityLog } from '@/lib/activity-log';
 
-async function getAuthenticatedTenant(): Promise<string | null> {
+async function getAuthenticatedTenant(): Promise<{ tenantId: string; userId: string } | null> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -13,13 +14,13 @@ async function getAuthenticatedTenant(): Promise<string | null> {
     .eq('user_id', user.id);
 
   if (!tu || tu.length === 0) return null;
-  return tu[0].tenant_id as string;
+  return { tenantId: tu[0].tenant_id as string, userId: user.id };
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -34,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from('suppliers')
       .update(updateData)
       .eq('id', id)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', auth.tenantId)
       .select()
       .single();
 
@@ -50,7 +51,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', auth.tenantId);
+
+    await createActivityLog({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      action: 'updated',
+      entityType: 'supplier',
+      entityId: id,
+      details: { name: data?.name },
+    });
 
     return NextResponse.json(data);
   } catch {
@@ -60,22 +70,32 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tenantId = await getAuthenticatedTenant();
-  if (!tenantId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const auth = await getAuthenticatedTenant();
+  if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const { error } = await supabaseAdmin
+  const { data: deleted } = await supabaseAdmin
     .from('suppliers')
     .delete()
     .eq('id', id)
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', auth.tenantId)
+    .select('name')
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!deleted) return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 });
 
   await supabaseAdmin
     .from('providers')
     .delete()
     .eq('id', id)
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', auth.tenantId);
+
+  await createActivityLog({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    action: 'deleted',
+    entityType: 'supplier',
+    details: { name: (deleted as any).name },
+  });
 
   return NextResponse.json({ success: true });
 }

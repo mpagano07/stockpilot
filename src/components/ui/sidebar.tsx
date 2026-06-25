@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { name: 'Antipérdidas', href: '/loss-prevention', requiredPlan: ALL_PLANS },
   { name: 'Visión Góndolas', href: '/shelf-vision', requiredPlan: ['business', 'enterprise'] },
   { name: 'Escáner', href: '/scanning', requiredPlan: ALL_PLANS },
+  { name: 'Historial', href: '/activity-logs', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
   { name: 'Notificaciones', href: '/notifications', requiredPlan: ALL_PLANS },
   { name: 'Planes', href: '/billing', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
   { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
