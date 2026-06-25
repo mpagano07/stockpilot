@@ -27,12 +27,15 @@ interface Prediction {
 }
 
 export default function ForecastPage() {
-  const { role } = useAuth();
+  const { role, tenant, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (role && role === 'member') router.replace('/dashboard');
-  }, [role, router]);
+    if (role && role === 'member') { router.replace('/dashboard'); return; }
+    if (!authLoading && tenant && (tenant.subscription_plan === 'free' || tenant.subscription_plan === 'starter')) {
+      router.replace('/dashboard');
+    }
+  }, [role, router, tenant, authLoading]);
 
   const [data, setData] = useState<{
     predictions: Prediction[];
@@ -60,6 +63,9 @@ export default function ForecastPage() {
       }
     })();
   }, []);
+
+  const isStarter = !authLoading && tenant && (tenant.subscription_plan === 'free' || tenant.subscription_plan === 'starter');
+  if (!authLoading && isStarter) return null;
 
   if (loading) {
     return (
