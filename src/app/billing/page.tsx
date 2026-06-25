@@ -98,12 +98,14 @@ export default function BillingPage() {
 
   const currentPlanId = subscription?.plan || 'starter';
 
-  const trialEnd = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
+  const TRIAL_DAYS = 30;
   const now = new Date();
   const daysUntilRenewal = subscription?.currentPeriodEnd
     ? Math.max(0, Math.floor((new Date(subscription.currentPeriodEnd).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : null;
-  const daysUntilTrialEnd = trialEnd ? Math.max(-1, Math.floor((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : null;
+  const daysUntilTrialEnd = subscription?.createdAt
+    ? Math.max(-1, Math.ceil(((new Date(subscription.createdAt).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000) - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   const isTrial = subscription?.status === 'free' || subscription?.status === 'inactive';
 
