@@ -425,22 +425,23 @@ export default function ProductsPage() {
             Administra tus productos, códigos de barras y niveles de stock crítico.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setIsCategoryModalOpen(true)} className="flex items-center gap-2">
-            <FolderKanban className="h-4 w-4" />
-            Categorías
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)} className="flex items-center gap-1.5">
+            <FolderKanban className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden md:inline">Categorías</span>
           </Button>
-          <Button variant="outline" onClick={() => { setIsPriceAdjustModalOpen(true); setPriceAdjustResult(null); setPriceAdjustPercentage(''); }} className="flex items-center gap-2">
-            <Percent className="h-4 w-4" />
-            Ajustar precios
+          <Button variant="outline" size="sm" onClick={() => { setIsPriceAdjustModalOpen(true); setPriceAdjustResult(null); setPriceAdjustPercentage(''); }} className="flex items-center gap-1.5">
+            <Percent className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden md:inline">Ajustar</span>
           </Button>
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Importar Excel
+          <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-1.5">
+            <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden md:inline">Importar</span>
           </Button>
-          <Button onClick={() => handleOpenProductModal(null)} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Nuevo Producto
+          <Button size="sm" onClick={() => handleOpenProductModal(null)} className="flex items-center gap-1.5">
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden md:inline">Nuevo</span>
+            <span className="md:hidden">Nuevo</span>
           </Button>
         </div>
       </div>
