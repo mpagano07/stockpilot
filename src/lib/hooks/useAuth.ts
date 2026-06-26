@@ -18,6 +18,8 @@ interface TenantInfo {
   slug: string;
   description?: string;
   subscription_plan?: string;
+  subscription_status?: string;
+  subscription_current_period_end?: string;
   created_at?: string;
 }
 

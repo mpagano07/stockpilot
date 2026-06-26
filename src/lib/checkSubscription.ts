@@ -1,10 +1,10 @@
 const TRIAL_DAYS = 30;
 
 export interface TenantSubscription {
-  subscription_status: string | null;
-  subscription_plan: string | null;
-  created_at: string | null;
-  subscription_current_period_end: string | null;
+  subscription_status?: string | null;
+  subscription_plan?: string | null;
+  created_at?: string | null;
+  subscription_current_period_end?: string | null;
 }
 
 export interface BlockedResult {

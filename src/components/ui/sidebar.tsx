@@ -7,7 +7,8 @@ import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useSidebar } from '@/lib/contexts/sidebar-context';
 import { cn } from '@/lib/utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Clock } from 'lucide-react';
+import { X, LogOut, Clock, AlertTriangle } from 'lucide-react';
+import { checkSubscriptionBlocked } from '@/lib/checkSubscription';
 
 interface NavItem {
   name: string;
@@ -36,7 +37,7 @@ const navItems: NavItem[] = [
   { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
 ];
 
-function SidebarNav({ onNavClick, tenantPlan, userRole }: { onNavClick?: () => void; tenantPlan?: string; userRole?: string | null }) {
+function SidebarNav({ onNavClick, tenantPlan, userRole, isBlocked }: { onNavClick?: () => void; tenantPlan?: string; userRole?: string | null; isBlocked?: boolean }) {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
 
@@ -50,6 +51,17 @@ function SidebarNav({ onNavClick, tenantPlan, userRole }: { onNavClick?: () => v
 
   return (
     <>
+      {isBlocked && (
+        <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-800/50">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <span className="text-xs font-bold text-red-300 uppercase tracking-wider">Suscripción vencida</span>
+          </div>
+          <p className="text-[10px] text-red-400/80">
+            Actualizá tu plan para seguir usando StockPilot
+          </p>
+        </div>
+      )}
       {visibleItems.map((item) => (
         <Link
           key={item.name}
@@ -96,6 +108,8 @@ export function Sidebar() {
       </aside>
     );
   }
+
+  const isBlocked = tenant ? checkSubscriptionBlocked(tenant).blocked : false;
 
   const userSection = (profile || user) ? (
     <div className="border-t border-gray-700 pt-4 space-y-2">
@@ -158,7 +172,7 @@ export function Sidebar() {
               </div>
             )}
             <nav className="flex-1 space-y-2 overflow-y-auto">
-              <SidebarNav onNavClick={close} tenantPlan={tenant?.subscription_plan} userRole={role} />
+              <SidebarNav onNavClick={close} tenantPlan={tenant?.subscription_plan} userRole={role} isBlocked={isBlocked} />
             </nav>
             <TrialCounter tenant={tenant} />
             {userSection}
@@ -180,7 +194,7 @@ export function Sidebar() {
           )}
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto mt-4">
-          <SidebarNav tenantPlan={tenant?.subscription_plan} userRole={role} />
+          <SidebarNav tenantPlan={tenant?.subscription_plan} userRole={role} isBlocked={isBlocked} />
         </nav>
         <TrialCounter tenant={tenant} />
         {userSection}
@@ -202,7 +216,19 @@ function TrialCounter({ tenant }: { tenant: any }) {
   const daysElapsed = Math.floor((todayStart.getTime() - createdDay.getTime()) / (1000 * 60 * 60 * 24));
   const daysLeft = Math.max(0, TRIAL_DAYS - daysElapsed);
 
-  if (daysLeft < 0) return null;
+  if (daysLeft <= 0) {
+    return (
+      <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-800/50">
+        <div className="flex items-center gap-2 mb-1">
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <span className="text-xs font-bold text-red-300 uppercase tracking-wider">Prueba finalizada</span>
+        </div>
+        <p className="text-[10px] text-red-400/80">
+          Suscribite a un plan para seguir usando StockPilot
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4 p-3 rounded-lg bg-blue-900/30 border border-blue-800/50">

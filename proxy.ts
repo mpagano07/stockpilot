@@ -99,6 +99,24 @@ export async function proxy(request: NextRequest) {
         );
       }
 
+      if (!request.nextUrl.pathname.startsWith('/billing')) {
+        const { data: tenantSub } = await supabaseAdmin
+          .from('tenants')
+          .select('subscription_status, subscription_plan, created_at, subscription_current_period_end')
+          .eq('id', tenantId)
+          .single();
+
+        if (tenantSub) {
+          const { checkSubscriptionBlocked } = await import('@/lib/checkSubscription');
+          const result = checkSubscriptionBlocked(tenantSub as any);
+          if (result.blocked) {
+            return withCookies(
+              NextResponse.redirect(new URL(`/billing?blocked=${result.reason}`, request.url))
+            );
+          }
+        }
+      }
+
       const headers = new Headers(request.headers);
       headers.set('x-tenant-id', tenantId);
       return withCookies(
