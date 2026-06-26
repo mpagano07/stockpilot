@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { clearStoredCredential, clearStoredRefreshToken } from '@/lib/webauthn';
 import type { User } from '@supabase/supabase-js';
 
 interface UserProfile {
@@ -102,8 +101,6 @@ export function useAuth() {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    clearStoredCredential();
-    clearStoredRefreshToken();
     setUser(null);
     setProfile(null);
     setTenant(null);
