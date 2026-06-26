@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import { checkSubscriptionBlocked } from '@/lib/checkSubscription';
 
 const publicPaths = ['/login', '/auth', '/onboarding', '/accept-invite'];
-const unprotectedPaths = ['/billing'];
+const billingPath = '/billing';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -49,29 +51,27 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/onboarding', request.url));
   }
 
-  if (unprotectedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    response.headers.set('x-tenant-id', profile.tenant_id);
-    return response;
-  }
+  // Check subscription block (skip for billing page)
+  if (!pathname.startsWith(billingPath)) {
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const accessToken = session?.access_token;
+    const { data: tenant } = await supabaseAdmin
+      .from('tenants')
+      .select('subscription_status, subscription_plan, created_at, subscription_current_period_end')
+      .eq('id', profile.tenant_id)
+      .single();
 
-  if (accessToken) {
-    try {
-      const checkRes = await fetch(new URL('/api/check-access', request.url), {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (checkRes.ok) {
-        const result = await checkRes.json();
-        if (result.blocked) {
-          const url = new URL('/billing', request.url);
-          url.searchParams.set('blocked', result.reason || 'payment_past_due');
-          return NextResponse.redirect(url);
-        }
+    if (tenant) {
+      const result = checkSubscriptionBlocked(tenant);
+      if (result.blocked) {
+        const url = new URL(billingPath, request.url);
+        url.searchParams.set('blocked', result.reason);
+        return NextResponse.redirect(url);
       }
-    } catch {
-      // Fall through — allow access if check fails
     }
   }
 
