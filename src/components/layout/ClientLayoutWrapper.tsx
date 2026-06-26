@@ -1,21 +1,35 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/ui/sidebar';
 import { Header } from '@/components/ui/header';
 import { SidebarProvider } from '@/lib/contexts/sidebar-context';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { checkSubscriptionBlocked } from '@/lib/checkSubscription';
 
 export function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { tenant, loading } = useAuth();
 
-  // Define public routes that do not get the dashboard sidebar, header, or dashboard padding wrappers
   const isPublicRoute = 
     pathname === '/' ||
     pathname?.startsWith('/login') ||
     pathname?.startsWith('/auth') ||
     pathname?.startsWith('/onboarding') ||
     pathname?.startsWith('/accept-invite');
+
+  const isBillingRoute = pathname?.startsWith('/billing');
+
+  useEffect(() => {
+    if (!loading && !isPublicRoute && !isBillingRoute && tenant) {
+      const result = checkSubscriptionBlocked(tenant);
+      if (result.blocked) {
+        router.replace(`/billing?blocked=${result.reason}`);
+      }
+    }
+  }, [loading, isPublicRoute, isBillingRoute, tenant, router]);
 
   if (isPublicRoute) {
     return <>{children}</>;
