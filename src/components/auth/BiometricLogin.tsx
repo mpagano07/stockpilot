@@ -15,6 +15,9 @@ import {
 import toast from 'react-hot-toast';
 import { Fingerprint } from 'lucide-react';
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
 export default function BiometricLogin() {
   const router = useRouter();
   const [available, setAvailable] = useState(false);
@@ -27,6 +30,24 @@ export default function BiometricLogin() {
   }, []);
 
   if (!available || !getStoredCredential()) return null;
+
+  async function exchangeRefreshToken(token: string) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY!,
+      },
+      body: JSON.stringify({ refresh_token: token }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const { data: sessionData, error } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    } as any);
+    return error ? null : sessionData.session;
+  }
 
   const handleBiometricLogin = async () => {
     setLoading(true);
@@ -50,10 +71,7 @@ export default function BiometricLogin() {
       if (!session) {
         const refreshToken = getStoredRefreshToken();
         if (refreshToken) {
-          const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken } as unknown as undefined);
-          if (!error && data?.session) {
-            session = data.session;
-          }
+          session = await exchangeRefreshToken(refreshToken);
         }
       }
 
