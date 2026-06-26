@@ -105,7 +105,7 @@ export function useAuth() {
   }, [loadProfileAndTenant]);
 
   const logout = async () => {
-    await supabase.auth.signOut({ scope: 'local' });
+    await (supabase.auth as any)._removeSession();
     setUser(null);
     setProfile(null);
     setTenant(null);
