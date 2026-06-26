@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 import BiometricLogin from '@/components/auth/BiometricLogin';
 import FingerprintSetup from '@/components/auth/FingerprintSetup';
+import { getStoredCredential } from '@/lib/webauthn';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,13 @@ function LoginContent() {
       }
 
       toast.success('Sesión iniciada correctamente');
-      setShowBiometricSetup(true);
+
+      if (getStoredCredential()) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        setShowBiometricSetup(true);
+      }
     } catch (error: unknown) {
       const maybeError = error as { message?: string };
       toast.error(maybeError?.message || 'Error al iniciar sesión');
