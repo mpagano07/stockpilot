@@ -6,10 +6,10 @@ import { Toaster } from 'react-hot-toast';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'StockPilot',
+  title: 'Vynko',
   description: 'Plataforma SaaS B2B de gestión de stock y ventas con IA',
   generator: 'Next.js',
-  applicationName: 'StockPilot',
+  applicationName: 'Vynko',
   referrer: 'origin-when-cross-origin',
   manifest: '/manifest.json',
   icons: {

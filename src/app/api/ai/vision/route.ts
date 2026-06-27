@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 async function getAuth() {
   const supabase = await createServerSupabaseClient();
@@ -15,18 +15,35 @@ async function getAuth() {
   return { userId: user.id, tenantId: tu[0].tenant_id as string };
 }
 
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; mimeType: string } | null> {
+  try {
+    const response = await fetch(imageUrl);
+    const buffer = await response.arrayBuffer();
+    const mimeType = response.headers.get('content-type') || 'image/jpeg';
+    const base64 = Buffer.from(buffer).toString('base64');
+    return { data: base64, mimeType };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   const auth = await getAuth();
   if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_OPENAI_API_KEY') {
-    return NextResponse.json({ error: 'API de IA no configurada. Configurá OPENAI_API_KEY en .env.local' }, { status: 503 });
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey || apiKey === 'YOUR_GOOGLE_AI_API_KEY') {
+    return NextResponse.json({ error: 'API de IA no configurada. Configurá GOOGLE_AI_API_KEY en .env.local' }, { status: 503 });
   }
 
   const { imageUrl } = await request.json();
   if (!imageUrl) {
     return NextResponse.json({ error: 'URL de imagen requerida' }, { status: 400 });
+  }
+
+  const imageData = await fetchImageAsBase64(imageUrl);
+  if (!imageData) {
+    return NextResponse.json({ error: 'No se pudo descargar la imagen' }, { status: 400 });
   }
 
   const [productsData, categoriesData] = await Promise.all([
@@ -37,7 +54,8 @@ export async function POST(request: Request) {
   const productNames = (productsData.data || []).map((p: any) => p.name).join(', ');
   const categoryNames = (categoriesData.data || []).map((c: any) => c.name).join(', ');
 
-  const openai = new OpenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const prompt = `Analizá esta foto de una góndola o estante de un negocio.
 Productos registrados en el sistema: ${productNames || 'No hay productos registrados'}.
@@ -56,22 +74,11 @@ Respondé en español con este formato JSON (sin markdown):
 Si no se ve una góndola o productos en la imagen, devolvé un JSON con description explicando qué se ve y estimatedStock vacío.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
-          ],
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.3,
-    });
-
-    const reply = completion.choices[0]?.message?.content || '{}';
+    const result = await model.generateContent([
+      { text: prompt },
+      { inlineData: { data: imageData.data, mimeType: imageData.mimeType } },
+    ]);
+    const reply = result.response.text() || '{}';
 
     let parsed;
     try {
@@ -104,7 +111,7 @@ Si no se ve una góndola o productos en la imagen, devolvé un JSON con descript
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error al analizar imagen';
-    console.error('Vision API error:', msg);
+    console.error('Gemini Vision error:', msg);
     return NextResponse.json({ error: 'Error al analizar la imagen con IA' }, { status: 500 });
   }
 }

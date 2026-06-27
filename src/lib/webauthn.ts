@@ -4,8 +4,8 @@ export interface StoredCredential {
   createdAt: number;
 }
 
-const CREDENTIAL_KEY = 'stockpilot_biometric';
-const REFRESH_KEY = 'stockpilot_biometric_refresh';
+const CREDENTIAL_KEY = 'vynko_biometric';
+const REFRESH_KEY = 'vynko_biometric_refresh';
 
 export function isWebAuthnSupported(): boolean {
   return (
@@ -80,7 +80,7 @@ export async function registerBiometric(
 
   const credential = (await navigator.credentials.create({
     publicKey: {
-      rp: { id: window.location.hostname, name: 'StockPilot' },
+      rp: { id: window.location.hostname, name: 'Vynko' },
       user: {
         id: new TextEncoder().encode(userId),
         name: userName,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 async function getAuth() {
   const supabase = await createServerSupabaseClient();
@@ -84,10 +84,11 @@ export async function GET() {
   const needsReorder = predictions.filter((p: any) => p.needsReorder) as any[];
 
   let aiAnalysis = null;
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (apiKey && apiKey !== 'YOUR_OPENAI_API_KEY') {
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (apiKey && apiKey !== 'YOUR_GOOGLE_AI_API_KEY') {
     try {
-      const openai = new OpenAI({ apiKey });
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       const prompt = `Analizá estos datos de demanda de productos para un negocio:
 
 Productos con más demanda (top 5):
@@ -100,14 +101,10 @@ Ventas totales últimos 30 días: $${totalSales30.toFixed(2)} (${totalTransactio
 
 Dame un análisis breve (3-4 oraciones) en español destacando tendencias y recomendaciones.`;
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300,
-      });
-      aiAnalysis = completion.choices[0]?.message?.content;
+      const result = await model.generateContent(prompt);
+      aiAnalysis = result.response.text();
     } catch (e) {
-      console.error('AI forecast analysis error:', e);
+      console.error('Gemini forecast analysis error:', e);
     }
   }
 

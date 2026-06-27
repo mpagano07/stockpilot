@@ -64,7 +64,7 @@ export function Header() {
   if (!isClient || loading) {
     return (
       <header className={cn('flex h-14 items-center justify-between bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4')}>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">StockPilot</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Vynko</h1>
       </header>
     );
   }

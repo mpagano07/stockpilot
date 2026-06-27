@@ -152,7 +152,7 @@ function BillingContent() {
             </p>
             <p className="text-sm text-red-600 dark:text-red-400 mt-1">
               {autoBlockedReason === 'trial_expired'
-                ? 'Los 30 días de prueba gratuita terminaron. Seleccioná uno de los planes para seguir usando todas las funcionalidades de StockPilot.'
+                ? 'Los 30 días de prueba gratuita terminaron. Seleccioná uno de los planes para seguir usando todas las funcionalidades de Vynko.'
                 : 'No se pudo procesar el pago de tu suscripción. Seleccioná un plan o actualizá tu método de pago para recuperar el acceso.'}
             </p>
           </div>
@@ -207,7 +207,7 @@ function BillingContent() {
                     : 'text-indigo-600 dark:text-indigo-400'
                 }`}>
                   {daysUntilTrialEnd !== null && daysUntilTrialEnd < 0
-                    ? 'Suscribite a un plan para seguir usando StockPilot'
+                    ? 'Suscribite a un plan para seguir usando Vynko'
                     : 'Elegí un plan para no perder acceso a las funcionalidades'}
                 </p>
               </>
@@ -352,7 +352,7 @@ function BillingContent() {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">¿Necesitás ayuda?</h3>
           <p className="text-xs text-gray-500 mt-0.5">Contactanos para consultas sobre facturación o para planes enterprise.</p>
         </div>
-        <Button variant="outline" onClick={() => window.open('mailto:support@stockpilot.app', '_blank')}>
+        <Button variant="outline" onClick={() => window.open('mailto:support@vynko.app', '_blank')}>
           Contactar soporte
         </Button>
       </Card>

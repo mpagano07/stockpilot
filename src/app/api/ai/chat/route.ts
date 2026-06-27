@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 async function getAuth() {
   const supabase = await createServerSupabaseClient();
@@ -47,9 +47,9 @@ export async function POST(request: Request) {
   const auth = await getAuth();
   if (!auth) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_OPENAI_API_KEY') {
-    return NextResponse.json({ error: 'API de IA no configurada. Configurá OPENAI_API_KEY en .env.local' }, { status: 503 });
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey || apiKey === 'YOUR_GOOGLE_AI_API_KEY') {
+    return NextResponse.json({ error: 'API de IA no configurada. Configurá GOOGLE_AI_API_KEY en .env.local' }, { status: 503 });
   }
 
   const { message } = await request.json();
@@ -59,9 +59,10 @@ export async function POST(request: Request) {
 
   const context = await getTenantContext(auth.tenantId);
 
-  const openai = new OpenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const systemPrompt = `Sos un asistente de inteligencia artificial especializado en gestión de inventario y ventas para un negocio. 
+  const prompt = `Sos un asistente de inteligencia artificial especializado en gestión de inventario y ventas para un negocio. 
 Tus respuestas deben ser breves, claras y en español. Usá un tono profesional pero amigable.
 
 Contexto actual del negocio:
@@ -79,24 +80,19 @@ Podés ayudar con:
 - Análisis de ventas
 - Identificar productos con bajo rendimiento
 - Sugerencias para optimizar inventario
-- Responder preguntas sobre el negocio basado en los datos disponibles`;
+- Responder preguntas sobre el negocio basado en los datos disponibles
+
+Consulta del usuario: ${message}`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
-
-    const reply = completion.choices[0]?.message?.content || 'Lo siento, no pude procesar tu consulta.';
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text() || 'Lo siento, no pude procesar tu consulta.';
     return NextResponse.json({ reply });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error al comunicarse con la IA';
-    console.error('OpenAI error:', msg);
-    return NextResponse.json({ error: 'Error al procesar la consulta con IA. Verificá tu clave de API.' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Error desconocido';
+    const stack = err instanceof Error ? err.stack : '';
+    console.error('Gemini chat error:', msg);
+    console.error('Stack:', stack);
+    return NextResponse.json({ error: `Error: ${msg}` }, { status: 500 });
   }
 }

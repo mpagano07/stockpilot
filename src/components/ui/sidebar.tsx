@@ -58,7 +58,7 @@ function SidebarNav({ onNavClick, tenantPlan, userRole, isBlocked }: { onNavClic
             <span className="text-xs font-bold text-red-300 uppercase tracking-wider">Suscripción vencida</span>
           </div>
           <p className="text-[10px] text-red-400/80">
-            Actualizá tu plan para seguir usando StockPilot
+            Actualizá tu plan para seguir usando Vynko
           </p>
         </div>
       )}
@@ -99,7 +99,7 @@ export function Sidebar() {
   if (loading) {
     return (
       <aside className="flex flex-col w-64 h-screen bg-gray-900 text-white p-4">
-        <div className="mb-8 text-2xl font-bold text-blue-400">StockPilot</div>
+        <div className="mb-8 text-2xl font-bold text-blue-400">Vynko</div>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-700 rounded" />
           <div className="h-8 bg-gray-700 rounded" />
@@ -158,7 +158,7 @@ export function Sidebar() {
             className="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-900 text-white p-4 border-r border-gray-800 md:hidden"
           >
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-2xl font-bold text-blue-400">StockPilot</h1>
+              <h1 className="text-2xl font-bold text-blue-400">Vynko</h1>
               <button onClick={close} className="p-1 rounded-md hover:bg-gray-800 text-gray-400">
                 <X className="h-5 w-5" />
               </button>
@@ -183,7 +183,7 @@ export function Sidebar() {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 h-screen bg-gray-900 text-white p-4 border-r border-gray-800">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-blue-400">StockPilot</h1>
+          <h1 className="text-2xl font-bold text-blue-400">Vynko</h1>
           {tenant && (
             <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-gray-800/60 border border-gray-700/50">
               <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -224,7 +224,7 @@ function TrialCounter({ tenant }: { tenant: any }) {
           <span className="text-xs font-bold text-red-300 uppercase tracking-wider">Prueba finalizada</span>
         </div>
         <p className="text-[10px] text-red-400/80">
-          Suscribite a un plan para seguir usando StockPilot
+          Suscribite a un plan para seguir usando Vynko
         </p>
       </div>
     );

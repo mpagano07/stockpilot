@@ -53,9 +53,9 @@ export default function LandingPage() {
             <div className="flex items-center gap-8">
               <Link href="/" className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg bg-cyan-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">S</span>
+                  <span className="text-white font-bold text-sm">V</span>
                 </div>
-                <span className="text-lg font-bold text-white">StockPilot</span>
+                <span className="text-lg font-bold text-white">Vynko</span>
               </Link>
               <div className="hidden md:flex items-center gap-6">
                 <Link href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">Características</Link>
@@ -187,7 +187,7 @@ export default function LandingPage() {
       <section className="py-20" id="features">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold">El método antiguo vs <span className="text-cyan-400">StockPilot</span></h2>
+            <h2 className="text-3xl sm:text-4xl font-bold">El método antiguo vs <span className="text-cyan-400">Vynko</span></h2>
             <p className="mt-4 text-gray-400">La diferencia entre sobrevivir y escalar tu negocio.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
@@ -212,7 +212,7 @@ export default function LandingPage() {
             <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-8 relative">
               <div className="absolute -top-3 left-8 px-3 py-1 bg-cyan-500 text-black text-xs font-bold rounded-full">Recomendado</div>
               <div className="text-4xl mb-4">🚀</div>
-              <h3 className="text-xl font-bold text-cyan-400 mb-4">StockPilot</h3>
+              <h3 className="text-xl font-bold text-cyan-400 mb-4">Vynko</h3>
               <ul className="space-y-3">
                 {[
                   'Escaneo móvil en tiempo real',
@@ -348,7 +348,7 @@ export default function LandingPage() {
             ¿Listo para dejar atrás las planillas?
           </h2>
           <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-            Unite a los cientos de negocios que ya gestionan su stock con StockPilot.
+            Unite a los cientos de negocios que ya gestionan su stock con Vynko.
           </p>
           <Link
             href="/auth/signup"
@@ -366,14 +366,14 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 rounded-lg bg-cyan-500 flex items-center justify-center">
-                <span className="text-white font-bold text-xs">S</span>
+                <span className="text-white font-bold text-xs">V</span>
               </div>
-              <span className="text-sm font-bold text-white">StockPilot</span>
+              <span className="text-sm font-bold text-white">Vynko</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <Link href="#" className="hover:text-gray-300 transition-colors">Privacidad</Link>
               <Link href="#" className="hover:text-gray-300 transition-colors">Términos</Link>
-              <span>© 2026 StockPilot</span>
+              <span>© 2026 Vynko</span>
             </div>
           </div>
         </div>

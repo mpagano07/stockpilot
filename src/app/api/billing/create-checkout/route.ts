@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const preapproval = await createPreApproval({
     payer_email: tenant?.billing_email || user.email!,
-    reason: `Suscripción ${planConfig.name} - StockPilot`,
+    reason: `Suscripción ${planConfig.name} - Vynko`,
     back_url: `${origin}/billing?success=true`,
     external_reference: tenantId,
     auto_recurring: {

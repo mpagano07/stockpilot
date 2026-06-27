@@ -1,6 +1,6 @@
 {
-  "name": "StockPilot",
-  "short_name": "StockPilot",
+  "name": "Vynko",
+  "short_name": "Vynko",
   "description": "Plataforma SaaS B2B para gestión de stock y ventas",
   "start_url": "/",
   "display": "standalone",

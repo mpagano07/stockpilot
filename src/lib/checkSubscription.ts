@@ -46,7 +46,7 @@ export function checkSubscriptionBlocked(tenant: TenantSubscription | null): Che
         return {
           blocked: true,
           reason: 'trial_expired',
-          message: 'Tu período de prueba de 30 días finalizó. Seleccioná un plan para seguir usando StockPilot.',
+          message: 'Tu período de prueba de 30 días finalizó. Seleccioná un plan para seguir usando Vynko.',
         };
       }
     }

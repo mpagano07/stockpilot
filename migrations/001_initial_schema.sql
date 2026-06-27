@@ -1,5 +1,5 @@
 -- ========================================
--- Supabase Migrations for StockPilot
+-- Supabase Migrations for Vynko
 -- ========================================
 
 -- Enable UUID extension

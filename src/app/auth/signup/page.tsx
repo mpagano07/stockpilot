@@ -111,9 +111,9 @@ export default function SignupPage() {
         <div className="max-w-md">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-10 w-10 rounded-lg bg-cyan-500 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
+              <span className="text-white font-bold text-lg">V</span>
             </div>
-            <h1 className="text-2xl font-bold text-white">StockPilot</h1>
+            <h1 className="text-2xl font-bold text-white">Vynko</h1>
           </div>
           <p className="text-gray-400 text-lg leading-relaxed">
             Gestioná tu stock, ventas y proveedores en un solo lugar con inteligencia artificial.
@@ -160,9 +160,9 @@ export default function SignupPage() {
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
             <div className="h-9 w-9 rounded-lg bg-cyan-500 flex items-center justify-center">
-              <span className="text-white font-bold text-base">S</span>
+              <span className="text-white font-bold text-base">V</span>
             </div>
-            <h1 className="text-xl font-bold text-white">StockPilot</h1>
+            <h1 className="text-xl font-bold text-white">Vynko</h1>
           </div>
 
           <h2 className="text-2xl font-bold text-white mb-1">Crear cuenta</h2>

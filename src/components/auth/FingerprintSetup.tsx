@@ -79,7 +79,7 @@ export default function FingerprintSetup({ onComplete, onSkip }: Props) {
 
             <p className="text-sm text-gray-300 mb-6">
               Activá el ingreso con huella digital para no tener que escribir tu email
-              y contraseña cada vez que entres a StockPilot desde este dispositivo.
+              y contraseña cada vez que entres a Vynko desde este dispositivo.
             </p>
 
             {done ? (
