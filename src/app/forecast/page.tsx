@@ -30,15 +30,6 @@ export default function ForecastPage() {
   const { role, tenant, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!authLoading && role === 'member') { router.replace('/dashboard'); return; }
-    if (!authLoading && tenant && (tenant.subscription_plan === 'free' || tenant.subscription_plan === 'starter')) {
-      router.replace('/dashboard');
-    }
-  }, [role, router, tenant, authLoading]);
-
-  if (authLoading || role === 'member') return null;
-
   const [data, setData] = useState<{
     predictions: Prediction[];
     topProducts: Prediction[];
@@ -65,6 +56,15 @@ export default function ForecastPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!authLoading && role === 'member') { router.replace('/dashboard'); return; }
+    if (!authLoading && tenant && (tenant.subscription_plan === 'free' || tenant.subscription_plan === 'starter')) {
+      router.replace('/dashboard');
+    }
+  }, [role, router, tenant, authLoading]);
+
+  if (authLoading || role === 'member') return null;
 
   const isStarter = !authLoading && tenant && (tenant.subscription_plan === 'free' || tenant.subscription_plan === 'starter');
   if (!authLoading && isStarter) return null;

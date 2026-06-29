@@ -27,7 +27,6 @@ const navItems: NavItem[] = [
   { name: 'Productos', href: '/products', requiredPlan: ALL_PLANS },
   { name: 'Proveedores', href: '/providers', requiredPlan: ALL_PLANS },
   { name: 'Clientes', href: '/customers', requiredPlan: ALL_PLANS },
-  { name: 'Asistente IA', href: '/ai', requiredPlan: ['business', 'enterprise'] },
   { name: 'Pronóstico', href: '/forecast', requiredPlan: ['business', 'enterprise'], requiredRole: ['owner', 'manager'] },
   { name: 'Antipérdidas', href: '/loss-prevention', requiredPlan: ALL_PLANS },
   { name: 'Visión Góndolas', href: '/shelf-vision', requiredPlan: ['business', 'enterprise'] },
