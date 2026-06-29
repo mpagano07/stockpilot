@@ -26,8 +26,8 @@ export async function GET() {
     supabaseAdmin.from('products').select('id, name, stock, min_stock, max_stock, price_cents, cost, category_id').eq('tenant_id', auth.tenantId),
     supabaseAdmin.from('sale_items').select(`
       product_id, quantity,
-      sale!inner(tenant_id, created_at)
-    `).eq('sale.tenant_id', auth.tenantId).gte('sale.created_at', thirtyDaysAgo.toISOString()),
+      sales!inner(tenant_id, created_at)
+    `).eq('sales.tenant_id', auth.tenantId).gte('sales.created_at', thirtyDaysAgo.toISOString()),
     supabaseAdmin.from('sales').select('created_at, total_cents').eq('tenant_id', auth.tenantId).gte('created_at', thirtyDaysAgo.toISOString()),
   ]);
 
@@ -35,7 +35,7 @@ export async function GET() {
   const dailySales = new Map<string, { totalQty: number; daysWithSales: Set<string> }>();
 
   for (const item of (saleItemsData.data || []) as any[]) {
-    const day = item.sale?.created_at?.slice(0, 10);
+    const day = item.sales?.created_at?.slice(0, 10);
     if (!day) continue;
     if (!dailySales.has(item.product_id)) {
       dailySales.set(item.product_id, { totalQty: 0, daysWithSales: new Set() });
