@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserMultiFormatReader, DecodeHintType } from '@zxing/library';
+import { BrowserMultiFormatReader } from '@zxing/library';
 import { cn } from '@/lib/utils/cn';
 
 interface BarcodeScannerProps {
@@ -11,10 +11,6 @@ interface BarcodeScannerProps {
 }
 
 const SCAN_THROTTLE_MS = 2000;
-const SCAN_INTERVAL_MS = 400;
-
-const HINTS = new Map();
-HINTS.set(DecodeHintType.TRY_HARDER, true);
 
 export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,8 +18,6 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
   const onResultRef = useRef(onResult);
   const onErrorRef = useRef(onError);
   const lastScanRef = useRef<{ code: string; time: number } | null>(null);
-  const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedRef = useRef(false);
   const [status, setStatus] = useState<'initializing' | 'scanning' | 'error' | 'idle'>('initializing');
   const [statusMessage, setStatusMessage] = useState('Inicializando cámara...');
 
@@ -33,10 +27,6 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
   }, [onResult, onError]);
 
   const stop = useCallback(() => {
-    if (scanTimerRef.current) {
-      clearInterval(scanTimerRef.current);
-      scanTimerRef.current = null;
-    }
     if (readerRef.current) {
       try {
         readerRef.current.reset();
@@ -44,16 +34,22 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
         // ignore cleanup errors
       }
     }
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
+  }, []);
+
+  const handleDecode = useCallback((text: string) => {
+    const now = Date.now();
+    const last = lastScanRef.current;
+    if (last && last.code === text && now - last.time < SCAN_THROTTLE_MS) return;
+    lastScanRef.current = { code: text, time: now };
+    onResultRef.current(text);
+  }, []);
+
+  const handleError = useCallback((err: any) => {
+    // no barcode found in this frame — expected
   }, []);
 
   const start = useCallback(async () => {
-    if (!readerRef.current || !videoRef.current || startedRef.current) return;
-    startedRef.current = true;
+    if (!readerRef.current) return;
 
     try {
       setStatus('initializing');
@@ -61,40 +57,17 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
 
       lastScanRef.current = null;
 
-      const video = videoRef.current;
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-      });
-
-      video.srcObject = stream;
-      await video.play();
-
-      scanTimerRef.current = setInterval(async () => {
-        if (!readerRef.current || !videoRef.current) return;
-        if (videoRef.current.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
-
-        try {
-          const result = await readerRef.current.decode(videoRef.current);
+      await readerRef.current.decodeFromVideoDevice(
+        null,
+        videoRef.current,
+        (result, err) => {
           if (result) {
-            const text = result.getText();
-            if (text) {
-              const now = Date.now();
-              const last = lastScanRef.current;
-              if (last && last.code === text && now - last.time < SCAN_THROTTLE_MS) {
-                return;
-              }
-              lastScanRef.current = { code: text, time: now };
-              onResultRef.current(text);
-            }
+            handleDecode(result.getText());
+          } else if (err) {
+            handleError(err);
           }
-        } catch {
-          // no barcode found in this frame — expected
         }
-      }, SCAN_INTERVAL_MS);
+      );
 
       setStatus('scanning');
       setStatusMessage('');
@@ -104,18 +77,15 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
       setStatusMessage(msg);
       onErrorRef.current?.(msg);
     }
-  }, []);
+  }, [handleDecode, handleError]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const reader = new BrowserMultiFormatReader(HINTS);
+    const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
 
     start();
 
     return () => {
-      cancelled = true;
       stop();
       readerRef.current = null;
     };
@@ -144,7 +114,7 @@ export function BarcodeScanner({ onResult, onError, className }: BarcodeScannerP
           <div className="text-center text-white px-4">
             <p className="text-sm mb-3">{statusMessage}</p>
             <button
-              onClick={() => { startedRef.current = false; start(); }}
+              onClick={start}
               className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black hover:bg-gray-200"
             >
               Reintentar
