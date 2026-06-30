@@ -29,12 +29,6 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const blockedReason = searchParams?.get('blocked');
 
-  useEffect(() => {
-    if (!authLoading && role === 'member') router.replace('/dashboard');
-  }, [authLoading, role, router]);
-
-  if (authLoading || role === 'member') return null;
-
   const [subscription, setSubscription] = useState<{
     plan: string;
     planName: string;
@@ -50,6 +44,10 @@ function BillingContent() {
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
+    if (!authLoading && role === 'member') router.replace('/dashboard');
+  }, [authLoading, role, router]);
+
+  useEffect(() => {
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -61,6 +59,8 @@ function BillingContent() {
       setLoading(false);
     })();
   }, []);
+
+  if (authLoading || role === 'member') return null;
 
   const handleSubscribe = async (planId: string) => {
     setCheckoutLoading(planId);
