@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { createNotification } from '@/lib/notifications';
 import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedUser(): Promise<{ tenantId: string; userId: string } | null> {
@@ -92,23 +91,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }
       }
 
-      await createNotification({
-        tenantId: auth.tenantId,
-        type: 'po_received',
-        title: 'OC Recibida',
-        message: `Orden de compra recibida con ${productNames.length} producto(s): ${productNames.join(', ')}`,
-        data: { purchase_order_id: id, product_count: productNames.length },
-      });
-    }
-
-    if (status === 'cancelled') {
-      await createNotification({
-        tenantId: auth.tenantId,
-        type: 'po_cancelled',
-        title: 'OC Cancelada',
-        message: `La orden de compra #${id.slice(0, 8)} fue cancelada.`,
-        data: { purchase_order_id: id },
-      });
     }
 
     await createActivityLog({

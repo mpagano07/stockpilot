@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { checkAndNotifyStock } from '@/lib/notifications';
 import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedUser(): Promise<{ tenantId: string; userId: string } | null> {
@@ -163,7 +162,6 @@ export async function POST(request: Request) {
           created_by: auth.userId,
         });
 
-      await checkAndNotifyStock(auth.tenantId, item.product_id);
     }
 
     const itemNames = saleItems.map(i => i.product_name).slice(0, 3);

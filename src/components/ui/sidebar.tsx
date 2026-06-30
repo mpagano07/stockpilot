@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useSidebar } from '@/lib/contexts/sidebar-context';
 import { cn } from '@/lib/utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,14 +32,12 @@ const navItems: NavItem[] = [
   { name: 'Visión Góndolas', href: '/shelf-vision', requiredPlan: ['business', 'enterprise'] },
   { name: 'Escáner', href: '/scanning', requiredPlan: ALL_PLANS },
   { name: 'Historial', href: '/activity-logs', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
-  { name: 'Notificaciones', href: '/notifications', requiredPlan: ALL_PLANS },
   { name: 'Planes', href: '/billing', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
   { name: 'Configuración', href: '/settings', requiredPlan: ALL_PLANS, requiredRole: ['owner', 'manager'] },
 ];
 
 function SidebarNav({ onNavClick, tenantPlan, userRole, isBlocked }: { onNavClick?: () => void; tenantPlan?: string; userRole?: string | null; isBlocked?: boolean }) {
   const pathname = usePathname();
-  const { unreadCount } = useNotifications();
 
   const effectivePlan = !tenantPlan || tenantPlan === 'free' ? 'starter' : tenantPlan;
 
@@ -76,11 +73,6 @@ function SidebarNav({ onNavClick, tenantPlan, userRole, isBlocked }: { onNavClic
           )}
         >
           <span>{item.name}</span>
-          {item.name === 'Notificaciones' && unreadCount > 0 && (
-            <span className="flex items-center justify-center h-5 min-w-5 px-1.5 text-[10px] font-bold text-white bg-rose-500 rounded-full">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
         </Link>
       ))}
     </>

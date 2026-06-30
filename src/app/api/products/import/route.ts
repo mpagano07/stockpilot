@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { checkAndNotifyStock } from '@/lib/notifications';
 import { createActivityLog } from '@/lib/activity-log';
 
 async function getAuthenticatedTenant(): Promise<{ tenantId: string; userId: string } | null> {
@@ -107,9 +106,6 @@ export async function POST(request: Request) {
         if (error) {
           results.push({ row: i + 1, status: 'skipped', name: row.name, error: error.message });
         } else {
-          if (row.stock !== undefined || row.min_stock !== undefined) {
-            await checkAndNotifyStock(auth.tenantId, existingId);
-          }
           results.push({ row: i + 1, status: 'updated', name: row.name });
         }
       } else {

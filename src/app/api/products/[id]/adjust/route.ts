@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createServerSupabaseClient } from '@/lib/supabase';
-import { createNotification, checkAndNotifyStock } from '@/lib/notifications';
+
 
 async function getAuth() {
   const supabase = await createServerSupabaseClient();
@@ -76,28 +76,6 @@ export async function POST(
   if (histError) {
     console.error('stock_history insert error:', JSON.stringify(histError));
     historyWarning = 'El stock se actualizó pero no se pudo registrar en el historial. ' + histError.message;
-  }
-
-  const reasonLabels: Record<string, { type: string; title: string }> = {
-    damaged: { type: 'system', title: 'Producto dañado' },
-    lost: { type: 'system', title: 'Producto perdido' },
-    stolen: { type: 'system', title: 'Robo reportado' },
-    expired: { type: 'system', title: 'Producto vencido' },
-    found: { type: 'system', title: 'Producto encontrado' },
-    correction: { type: 'system', title: 'Ajuste de inventario' },
-  };
-
-  const label = reasonLabels[reason] || { type: 'system', title: 'Ajuste de stock' };
-  await createNotification({
-    tenantId: auth.tenantId,
-    type: 'system',
-    title: label.title,
-    message: `${product.name}: ${quantity > 0 ? '+' : ''}${quantity} unidades (${reason}${notes ? ': ' + notes : ''}). Stock actual: ${newStock}`,
-    data: { product_id: id, quantity, reason, newStock },
-  });
-
-  if (quantity < 0) {
-    await checkAndNotifyStock(auth.tenantId, id);
   }
 
   return NextResponse.json({
